@@ -1,0 +1,34 @@
+﻿<Window x:Class="GraduationProject.Win"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="毕业设计" Height="300" Width="280"  Name="dignWin" Closed="dignWin_Closed" >
+    <Grid Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+            <ColumnDefinition></ColumnDefinition>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="20"></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="20"></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition Height="40"></RowDefinition>           
+        </Grid.RowDefinitions>
+        <TextBlock Text="模板计算" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16" Foreground="SkyBlue"></TextBlock>
+        <TextBlock Text="构件选择:" Grid.Row="1" VerticalAlignment="Bottom" Foreground="DodgerBlue"></TextBlock>
+        <TextBlock Text="导出方式:" Grid.Row="4" VerticalAlignment="Bottom" Foreground="DodgerBlue"></TextBlock>
+        <CheckBox Content="梁模板" VerticalAlignment="Center" Grid.Row="2" Name="chbB"/>
+        <CheckBox Content="柱模板" VerticalAlignment="Center" Grid.Row="2" Grid.Column="1" Name="chbC"></CheckBox>
+        <CheckBox Content="板模板" VerticalAlignment="Center" Grid.Row="2" Grid.Column="2" Name="chbF"></CheckBox>
+        <CheckBox Content="剪力墙模板" VerticalAlignment="Center" Grid.Row="3" Name="chbW"></CheckBox>
+        <CheckBox Content="窗台板模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Name="chbCF"></CheckBox>
+        <CheckBox Content="楼梯模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Name="chbS"></CheckBox>
+        <RadioButton Content="Excel表格" Grid.Row="5" VerticalAlignment="Center" Name="rbtnE"></RadioButton>
+        <RadioButton Content="Word文档" Grid.Row="5" VerticalAlignment="Center" Grid.Column="1" Name="rbtnW"></RadioButton>
+        <RadioButton Content="Txt文本" Grid.Row="5" VerticalAlignment="Center" Grid.Column="2" Name="rbtnT"></RadioButton>
+        <Button Grid.ColumnSpan="3" Grid.Row="6" Margin="50,5,50,5" Foreground="DodgerBlue" Background="LightGray" Content="确定" FontSize="16" Name="btnEnter" Click="btnEnter_Click"></Button>
+    </Grid>
+</Window>
