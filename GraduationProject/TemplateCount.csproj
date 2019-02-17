@@ -7,8 +7,8 @@
     <ProjectGuid>{22E110F0-40DC-4D8F-B2F8-A84BD2634C98}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>GraduationProject</RootNamespace>
-    <AssemblyName>GraduationProject</AssemblyName>
+    <RootNamespace>TemplateCount</RootNamespace>
+    <AssemblyName>TemplateCount</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -31,7 +31,13 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="EPPlus">
+      <HintPath>..\..\EPPlus.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
@@ -45,6 +51,8 @@
     <Reference Include="System" />
     <Reference Include="System.Activities.Core.Presentation" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -58,13 +66,11 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Beam.cs" />
-    <Compile Include="Col.cs" />
-    <Compile Include="Fl.cs" />
-    <Compile Include="LinkInfo.cs" />
+    <Compile Include="Avoidance.cs" />
+    <Compile Include="BasisCode.cs" />
+    <Compile Include="TpCount.cs" />
+    <Compile Include="ExportToExcel.cs" />
     <Compile Include="Mainclass.cs" />
-    <Compile Include="Stairs.cs" />
-    <Compile Include="StructWall.cs" />
     <Compile Include="TpAmount.cs" />
     <Compile Include="Win.cs">
       <DependentUpon>Win.xaml</DependentUpon>

@@ -6,7 +6,6 @@ E:\BIMING\GraduationProject\GraduationProject\obj\Debug\App.g.cs
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\Win.g.cs
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject_MarkupCompile.cache
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject.g.resources
-E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject.csproj.CoreCompileInputs.cache
+E:\BIMING\GraduationProject\GraduationProject\obj\Debug\TamplateCount.csproj.CoreCompileInputs.cache
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject.dll
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject.pdb
-E:\BIMING\GraduationProject\GraduationProject\obj\Debug\GraduationProject.csprojAssemblyReference.cache
