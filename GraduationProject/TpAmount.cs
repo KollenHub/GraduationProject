@@ -35,6 +35,10 @@ namespace TemplateCount
         /// </summary>
         public string ComponentLength { get; set; }
         /// <summary>
+        /// 构件高度（适用于柱）
+        /// </summary>
+        public string componentHighth { get; set; }
+        /// <summary>
         /// 模板未扣减的尺寸（长x宽）
         /// </summary>
         public string TemplateSize { get; set; }
@@ -66,21 +70,25 @@ namespace TemplateCount
         }
 
         /// <summary>
-        /// 梁模板字段
+        /// 梁柱模板字段
         /// </summary>
-        /// <param name="beam">梁实例</param>
+        /// <param name="fi">梁实例</param>
         /// <param name="lev">梁所在标高</param>
         /// <param name="templateSize">模板尾扣减时的尺寸（长x宽）</param>
         /// <param name="tempDelSize">模板扣减数量（平方米）</param>
         /// <param name="templateamount">模板最终的数量（平方米）</param>
         /// <param name="num">个数</param>
-        public TpAmount(FamilyInstance beam,Level lev,string templateSize,string tempDelSize, double templateamount,int num)
+        public TpAmount(FamilyInstance fi,Level lev,string templateSize,string tempDelSize, double templateamount,int num)
         {
-            this.ComponentName = beam.Name.ToString();
-            this.ComponentType = beam.Symbol.Family.Name.ToString();
+            this.ComponentName = fi.Name.ToString();
+            this.ComponentType = fi.Symbol.Family.Name.ToString();
             this.LevelName =lev.Name.ToString();
-            this.ComponentLength =beam.LookupParameter("长度").AsValueString();
-            this.ElemId = beam.Id.IntegerValue;
+            if (fi.Category.Id.IntegerValue==(int)BuiltInCategory.OST_StructuralColumns)
+                this.componentHighth = fi.LookupParameter("长度").AsValueString();
+            else
+                this.ComponentLength = fi.LookupParameter("长度").AsValueString();
+            
+            this.ElemId = fi.Id.IntegerValue;
             this.TemplateSize = templateSize;
             this.TemplateDelSize = tempDelSize;
             this.TemplateAmount = bc.TRF(templateamount,3);
@@ -104,7 +112,6 @@ namespace TemplateCount
             this.TemplateAmount = bc.TRF(templateamount, 3);
             this.TemplateNum = num;
         }
-       
-
+        
     }
 }

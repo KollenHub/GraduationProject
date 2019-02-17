@@ -37,8 +37,8 @@ namespace TemplateCount
                     List<TpAmount> colTpa_List = new List<TpAmount>();
                     //获取所有构件分别对应的模板集合
                     bc.AllELmentList(doc, lev_List, out beamTpa_List, out flTpa_List, out colTpa_List);
-                    try
-                    {
+                    //try
+                    //{
                         List<string> strList = win.chbStrList;
                         foreach (string str in strList)
                         {
@@ -62,11 +62,11 @@ namespace TemplateCount
                             }
                         }
                         ExportToExcel worsheet = new ExportToExcel(tpAList_List);
-                    }
-                    catch
-                    {
-                        judge = 0;
-                    }
+                    //}
+                    //catch
+                    //{
+                    //    judge = 0;
+                    //}
                 }
             } while (judge == 0);
 

@@ -128,21 +128,59 @@ namespace TemplateCount
         /// <summary>
         /// 楼板模板的计算方法
         /// </summary>
-        /// <param name="doc">项目文档</param>
         /// <param name="flList">楼板集合</param>
         /// <param name="tpName">类型名称</param>
         /// <param name="tpAmountList">模板量</param>
-        public TpCount(Document doc,List<Floor> flList,TypeName tpName,Level lev,out List<TpAmount> tpAmountList)
+        public TpCount(List<Floor> flList,TypeName tpName,Level lev,out List<TpAmount> tpAmountList)
         {
             tpAmountList = new List<TpAmount>();
             //板的底面积
             foreach(Floor fl in flList)
             {
                 Face bface = bc.SlabBottomFace(fl);
-                string bfaceSize = bc.SlabBottomSize(bface);
+                string bfaceSize = bc.SlabSize(bface,0);
                 double tpamount = bc.EAToCA(bface.Area);
                 TpAmount flTpa = new TpAmount(fl, lev,bfaceSize, tpamount, 1);
                 tpAmountList.Add(flTpa);
+            }
+        }
+        /// <summary>
+        /// 柱子的模板计算
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="colList">柱子的实例集合</param>
+        /// <param name="lev">柱子所在标高</param>
+        /// <param name="tpAmountList">模板量</param>
+        public TpCount(Document doc,List<FamilyInstance> colList,Level lev,out List<TpAmount> tpAmountList)
+        {
+            tpAmountList = new List<TpAmount>();
+            
+            foreach (FamilyInstance cfi in colList)
+            {
+                double d = 0;
+                List<Floor> joinFloor = JoinGeometryUtils.GetJoinedElements(doc, cfi).Where(m =>doc.GetElement(m) is Floor).ToList().ConvertAll(m => doc.GetElement(m) as Floor);
+                if (joinFloor.Count!=0)
+                {
+                    string cmstr = cfi.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
+                    foreach (Floor fl in joinFloor)
+                    {
+                        string fmstr = fl.FloorType.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
+                        if (cmstr==fmstr)
+                        {
+                            if (d == 0) d = fl.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM).AsDouble();
+                            else d = Math.Min(d, fl.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM).AsDouble());
+                        }
+                    }
+                }
+                    List<Face> csFaces = bc.ComponentSideFace(cfi);
+                foreach (Face sf in csFaces)
+                {
+                    double tpamount = 0;
+                    string sfacesize = bc.SlabSize(sf, d,out tpamount);
+                    TpAmount cTpa = new TpAmount(cfi, lev, sfacesize, null, tpamount, 1);
+                    tpAmountList.Add(cTpa);
+                }
+                
             }
         }
     }

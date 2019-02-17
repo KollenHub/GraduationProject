@@ -12,3 +12,16 @@ E:\BIMING\GraduationProject\GraduationProject\obj\Debug\TemplateCount.csproj.Cop
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\TemplateCount.dll
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\TemplateCount.pdb
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\TemplateCount.csprojAssemblyReference.cache
+E:\GraduationProject\GraduationProject\bin\Debug\TemplateCount.dll
+E:\GraduationProject\GraduationProject\bin\Debug\TemplateCount.pdb
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.csprojAssemblyReference.cache
+E:\GraduationProject\GraduationProject\obj\Debug\App.baml
+E:\GraduationProject\GraduationProject\obj\Debug\Win.baml
+E:\GraduationProject\GraduationProject\obj\Debug\App.g.cs
+E:\GraduationProject\GraduationProject\obj\Debug\Win.g.cs
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount_MarkupCompile.cache
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.g.resources
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.csproj.CoreCompileInputs.cache
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.csproj.CopyComplete
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.dll
+E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.pdb

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using Autodesk.Revit.DB;
 namespace TemplateCount
 {
@@ -46,6 +47,14 @@ namespace TemplateCount
             return elemList;
         }
 
+        /// <summary>
+        /// 模板整合计算
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="lev_List">标高集合</param>
+        /// <param name="beamTpa_List">梁集合</param>
+        /// <param name="flTpa_List">楼板集合</param>
+        /// <param name="colTpa_List">柱子集合</param>
         public void AllELmentList(Document doc, List<Level> lev_List, out List<TpAmount> beamTpa_List, out List<TpAmount> flTpa_List, out List<TpAmount> colTpa_List)
         {
             //梁的集合
@@ -79,28 +88,23 @@ namespace TemplateCount
                     //该标高下板的模板集合
                     List<Floor> levFl_List = flList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
                     List<TpAmount> levFlTpa = null;
-                    TpCount levFlTC = new TpCount(doc, levFl_List, TpCount.TypeName.Floor, lev, out levFlTpa);
+                    TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.Floor, lev, out levFlTpa);
                     flTpa_List.AddRange(levFlTpa);
                 }
                 catch { }
+                //防止柱子为空
+                try
+                {
+                    List<FamilyInstance> levCol_List = columnList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_BASE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
+                    List<TpAmount> levColTpa = null;
+                    TpCount levColTC = new TpCount(doc, levCol_List, lev, out levColTpa);
+                    colTpa_List.AddRange(levColTpa);
+                }
+                catch
+                { }
             }
         }
-
-        public List<string> TpaProperty(TpAmount tpAmount)
-        {
-            List<string> strList = new List<string>();
-            strList.Add(tpAmount.ComponentName);
-            strList.Add(tpAmount.ComponentType);
-            strList.Add(tpAmount.LevelName);
-            strList.Add(tpAmount.ComponentLength);
-            strList.Add(tpAmount.ElemId.ToString());
-            strList.Add(tpAmount.TemplateSize);
-            strList.Add(tpAmount.TemplateDelSize);
-            strList.Add(tpAmount.TemplateAmount.ToString());
-            strList.Add(tpAmount.TemplateNum.ToString());
-            return strList;
-        }
-
+        
         /// <summary>
         /// 返回过滤器元素集合
         /// </summary>
@@ -175,14 +179,104 @@ namespace TemplateCount
         }
 
         /// <summary>
+        /// 获得柱的侧面
+        /// </summary>
+        /// <param name="cfi"></param>
+        /// <returns></returns>
+        public List<Face> ComponentSideFace(FamilyInstance fi)
+        {
+            List<Face> colsideFaces = new List<Face>();
+            Options opt = new Options();
+            opt.ComputeReferences = true;
+            opt.IncludeNonVisibleObjects = false;
+            opt.DetailLevel = ViewDetailLevel.Fine;
+            GeometryElement gelem = fi.get_Geometry(opt);
+            IEnumerator gEnum = gelem.GetEnumerator();
+            while (gEnum.MoveNext())
+            {
+                GeometryObject gobj = gEnum.Current as GeometryObject;
+                if (gobj is Solid)
+                {
+                    Solid sd = gobj as Solid;
+                    foreach (Face face in sd.Faces)
+                    {
+                        if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(new XYZ(0, 0, 1)) || face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                            continue;
+                        colsideFaces.Add(face);
+                    }
+                }
+            }
+            if (colsideFaces.Count != 4)
+            {
+                MessageBox.Show("出错了");
+                return null;
+
+            }
+            return colsideFaces;
+        }
+
+        /// <summary>
         /// 返回楼板底边的长和宽
         /// </summary>
         /// <param name="bface">楼板底面的面</param>
+        /// <param name="delLengthSize">扣减长边的值(单位为英寸)</param>
+        /// <param name="Area">扣减后的面积</param>
         /// <returns></returns>
-        public string SlabBottomSize(Face bface)
+        public string SlabSize(Face bface, double delLengthSize, out double Area)
         {
             EdgeArrayArray eArrAray = bface.EdgeLoops;
-            if (eArrAray.Size>1)
+            if (eArrAray.Size > 1)
+            {
+                Area = EAToCA(bface.Area);
+                return "-";
+            }
+            else
+            {
+                EdgeArray eAray = eArrAray.get_Item(0);
+                if (eAray.Size != 4)
+                {
+                    Area = EAToCA(bface.Area);
+                    return "-";
+                }
+                List<Line> linList = new List<Line>();
+                foreach (Edge ed in eAray)
+                {
+                    Line l = (ed.AsCurve()) as Line;
+                    linList.Add(l);
+                }
+                foreach (Line l1 in linList)
+                {
+                    XYZ dirt1 = l1.Direction;
+                    foreach (Line l2 in linList)
+                    {
+                        XYZ dirt2 = l2.Direction;
+                        if (dirt1.IsAlmostEqualTo(dirt2)) continue;
+                        double angle = dirt1.X * dirt2.X + dirt1.Y * dirt2.Y + dirt1.Z * dirt2.Z;
+                        if (Math.Abs(angle) <= 0.001)
+                        {
+                            double length1 = TRF(l1.Length);
+                            double length2 = TRF(l2.Length);
+                            string s = length1 > length2 ? BAndH(l1.Length - delLengthSize, l2.Length) : BAndH(l2.Length - delLengthSize, l1.Length);
+                            Area = length1 > length2 ? EAToCA((l1.Length - delLengthSize) * l2.Length) : EAToCA((l2.Length - delLengthSize) * l1.Length);
+                            return s;
+                        }
+
+                    }
+                }
+                Area = EAToCA(bface.Area);
+                return "-";
+            }
+        }
+        /// <summary>
+        /// 返回楼板底边的长和宽
+        /// </summary>
+        /// <param name="bface">楼板底面的面</param>
+        /// <param name="delLengthSize">扣减长边的值(单位为英寸)</param>
+        /// <returns></returns>
+        public string SlabSize(Face bface, double delLengthSize)
+        {
+            EdgeArrayArray eArrAray = bface.EdgeLoops;
+            if (eArrAray.Size > 1)
             {
                 return "-";
             }
@@ -203,15 +297,15 @@ namespace TemplateCount
                     {
                         XYZ dirt2 = l2.Direction;
                         if (dirt1.IsAlmostEqualTo(dirt2)) continue;
-                        double angle = dirt1.X * dirt2.X + dirt1.Y*dirt2.Y + dirt1.Z * dirt2.Z;
-                        if (Math.Abs(angle)<=0.001)
+                        double angle = dirt1.X * dirt2.X + dirt1.Y * dirt2.Y + dirt1.Z * dirt2.Z;
+                        if (Math.Abs(angle) <= 0.001)
                         {
-                            double length1 =TRF(l1.Length);
+                            double length1 = TRF(l1.Length);
                             double length2 = TRF(l2.Length);
-                            string s = length1 > length2 ? BAndH(l1.Length, l2.Length) : BAndH(l2.Length, l1.Length);
+                            string s = length1 > length2 ? BAndH(l1.Length - delLengthSize, l2.Length) : BAndH(l2.Length - delLengthSize, l1.Length);
                             return s;
                         }
-                        
+
                     }
                 }
                 return "-";
@@ -321,7 +415,7 @@ namespace TemplateCount
         /// <returns></returns>
         public string BAndH(double length, double width)
         {
-            return TRF(width * 304.8,0).ToString() + "mm x " + TRF((length * 304.8), 0).ToString() + "mm";
+            return TRF(width * 304.8, 0).ToString() + "mm x " + TRF((length * 304.8), 0).ToString() + "mm";
         }
         /// <summary>
         /// 获取与楼板与梁相交的侧面的面积
@@ -443,7 +537,7 @@ namespace TemplateCount
         /// <returns></returns>
         public double TRF(double lastDouble, int i)
         {
-            double tf =lastDouble*Math.Pow(10,i);
+            double tf = lastDouble * Math.Pow(10, i);
             int integer = Convert.ToInt32(tf);
             tf = integer / Math.Pow(10, i) * 1.0;
             return tf;
@@ -455,7 +549,7 @@ namespace TemplateCount
         /// <returns></returns>
         public double TRF(double lastDouble)
         {
-            double tf =Convert.ToDouble(lastDouble.ToString("0.######"));
+            double tf = Convert.ToDouble(lastDouble.ToString("0.######"));
             return tf;
         }
         /// <summary>
@@ -463,12 +557,12 @@ namespace TemplateCount
         /// </summary>
         /// <param name="strlist"></param>
         /// <returns></returns>
-        public List<string> ProTransform(List<string> strlist,out List<int> columnSizeList)
+        public List<string> ProTransform(List<string> strlist, out List<int> columnSizeList)
         {
             List<string> proNameList = new List<string>();
             columnSizeList = new List<int>();
             foreach (string pi in strlist)
-            { 
+            {
                 //表格列字段
                 string str = null;
                 //表格列宽度
@@ -542,7 +636,7 @@ namespace TemplateCount
                     Solid sd = gobj as Solid;
                     foreach (Face face in sd.Faces)
                     {
-                        if (face.ComputeNormal(new UV(0,0)).IsAlmostEqualTo(new XYZ(0,0,-1)))
+                        if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(new XYZ(0, 0, -1)))
                         {
                             bface = face;
                             break;
@@ -550,7 +644,7 @@ namespace TemplateCount
                     }
                 }
             }
-                
+
             return bface;
         }
     }
