@@ -54,10 +54,10 @@ namespace TemplateCount
             List<CheckBox> chbList = new List<CheckBox>();
             chbList.Add(chbB);
             chbList.Add(chbC);
-            chbList.Add(chbCF);
             chbList.Add(chbF);
-            chbList.Add(chbS);
-            chbList.Add(chbW);
+            chbList.Add(chbBc);
+            chbList.Add(chbCc);
+            chbList.Add(chbFc);
             chbStrList = new List<string>();
             foreach (CheckBox chb in chbList)
             {

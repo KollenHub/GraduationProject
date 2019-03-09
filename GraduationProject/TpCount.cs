@@ -7,18 +7,18 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 namespace TemplateCount
 {
-     public class TpCount
+    public class TpCount
     {
-      public BasisCode bc = new BasisCode();
+        public BasisCode bc = new BasisCode();
         //定义不同构件属性的枚举
         public enum TypeName
         {
-            Floor = 0,
-            Beam = 1,
-            Columns = 2,
-            StructralWall = 3,
-            Stairs = 4,
-            WaterBox = 5
+            板模板 =0,
+            梁模板= 1,
+            柱模板 = 2,
+            梁砼工程量=3,
+            板砼工程量=4,
+            柱砼工程量=5,          
 
         }
         /// <summary>
@@ -48,14 +48,14 @@ namespace TemplateCount
                 foreach (FamilyInstance fj in fiJoinList)
                 {
                     //判断该梁是否剪切所相连的梁，如果是则是综合梁
-                    if (JoinGeometryUtils.IsCuttingElementInJoin(doc,fi,fj)==true)
+                    if (JoinGeometryUtils.IsCuttingElementInJoin(doc, fi, fj) == true)
                     {
                         allBeam_List.Add(fi);
                         break;
                     }
                 }
                 //不是综合梁则是纯被剪切梁
-                if (allBeam_List.Count==0||allBeam_List.Where(m=>m.Id.IntegerValue==fi.Id.IntegerValue).Count()==0)
+                if (allBeam_List.Count == 0 || allBeam_List.Where(m => m.Id.IntegerValue == fi.Id.IntegerValue).Count() == 0)
                 {
                     becutBeam_List.Add(fi);
                 }
@@ -70,7 +70,7 @@ namespace TemplateCount
                 //标高
                 Level lev = bfi.Host as Level;
                 //获取该梁中配套的侧面和底面集合的集合
-               List <List<Face>> faceList_List = bc.AllFaceOfBeam(doc, bfi);
+                List<List<Face>> faceList_List = bc.AllFaceOfBeam(doc, bfi);
                 //把每一套侧面和底面的面积以及其尺寸拿出来
                 foreach (List<Face> face_List in faceList_List)
                 {
@@ -80,11 +80,11 @@ namespace TemplateCount
                     double b = bfi.Symbol.LookupParameter("b").AsDouble();
                     double barea = bc.EAToCA(bface.Area);
                     double sarea = bc.EAToCA(sface.Area);
-                    string bftp = bc.BAndH((bface.Area/b),b);
-                    string sftp = bc.BAndH((sface.Area/h), h);
+                    string bftp = bc.BAndH((bface.Area / b), b);
+                    string sftp = bc.BAndH((sface.Area / h), h);
                     //分别创建对应的模板面积字段对象
-                    TpAmount btpa = new TpAmount(bfi, lev, bftp, "-", barea, 1);
-                    TpAmount stpa = new TpAmount(bfi, lev, sftp, "-", sarea, 2);
+                    TpAmount btpa = new TpAmount(bfi, lev, TypeName.梁模板, bftp, "-", barea, 1);
+                    TpAmount stpa = new TpAmount(bfi, lev, TypeName.梁模板, sftp, "-", sarea, 2);
                     tpAmountList.Add(btpa);
                     tpAmountList.Add(stpa);
                 }
@@ -119,10 +119,10 @@ namespace TemplateCount
                     double fsh = (fs.LookupParameter("h").AsDouble() * 304.8);
                     string delTpSize = fsb.ToString() + "mm x " + fsh.ToString() + "mm";
                     double delTpa = (fsb * fsh / 1000000);
-                    TpAmount sDelTpa = new TpAmount(bfi, lev, "-", delTpSize, -delTpa, num);
+                    TpAmount sDelTpa = new TpAmount(bfi, lev, TypeName.梁模板, "-",  delTpSize, -delTpa, num);
                 }
             }
-          
+
         }
 
         /// <summary>
@@ -131,16 +131,16 @@ namespace TemplateCount
         /// <param name="flList">楼板集合</param>
         /// <param name="tpName">类型名称</param>
         /// <param name="tpAmountList">模板量</param>
-        public TpCount(List<Floor> flList,TypeName tpName,Level lev,out List<TpAmount> tpAmountList)
+        public TpCount(List<Floor> flList, TypeName tpName, Level lev, out List<TpAmount> tpAmountList)
         {
             tpAmountList = new List<TpAmount>();
             //板的底面积
-            foreach(Floor fl in flList)
+            foreach (Floor fl in flList)
             {
                 Face bface = bc.SlabBottomFace(fl);
-                string bfaceSize = bc.SlabSize(bface,0);
+                string bfaceSize = bc.SlabSize(bface, 0);
                 double tpamount = bc.EAToCA(bface.Area);
-                TpAmount flTpa = new TpAmount(fl, lev,bfaceSize, tpamount, 1);
+                TpAmount flTpa = new TpAmount(fl, lev, TypeName.板模板, bfaceSize,  tpamount, 1);
                 tpAmountList.Add(flTpa);
             }
         }
@@ -151,36 +151,59 @@ namespace TemplateCount
         /// <param name="colList">柱子的实例集合</param>
         /// <param name="lev">柱子所在标高</param>
         /// <param name="tpAmountList">模板量</param>
-        public TpCount(Document doc,List<FamilyInstance> colList,Level lev,out List<TpAmount> tpAmountList)
+        public TpCount(Document doc, List<FamilyInstance> colList, Level lev, out List<TpAmount> tpAmountList)
         {
             tpAmountList = new List<TpAmount>();
-            
+
             foreach (FamilyInstance cfi in colList)
             {
                 double d = 0;
-                List<Floor> joinFloor = JoinGeometryUtils.GetJoinedElements(doc, cfi).Where(m =>doc.GetElement(m) is Floor).ToList().ConvertAll(m => doc.GetElement(m) as Floor);
-                if (joinFloor.Count!=0)
+                List<Floor> joinFloor = JoinGeometryUtils.GetJoinedElements(doc, cfi).Where(m => doc.GetElement(m) is Floor).ToList().ConvertAll(m => doc.GetElement(m) as Floor);
+                if (joinFloor.Count != 0)
                 {
                     string cmstr = cfi.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
                     foreach (Floor fl in joinFloor)
                     {
                         string fmstr = fl.FloorType.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
-                        if (cmstr==fmstr)
+                        if (cmstr == fmstr)
                         {
                             if (d == 0) d = fl.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM).AsDouble();
                             else d = Math.Min(d, fl.get_Parameter(BuiltInParameter.FLOOR_ATTR_THICKNESS_PARAM).AsDouble());
                         }
                     }
                 }
-                    List<Face> csFaces = bc.ComponentSideFace(cfi);
+                List<Face> csFaces = bc.ComponentSideFace(cfi);
                 foreach (Face sf in csFaces)
                 {
-                    double tpamount = 0;
-                    string sfacesize = bc.SlabSize(sf, d,out tpamount);
-                    TpAmount cTpa = new TpAmount(cfi, lev, sfacesize, null, tpamount, 1);
+
+                    double length = cfi.get_Parameter(BuiltInParameter.INSTANCE_LENGTH_PARAM).AsDouble();
+                    double width = sf.Area / length;
+                    string sfacesize = bc.BAndH(length - d, width);
+                    double tpamount = bc.EAToCA((length - d) * width);
+                    TpAmount cTpa = new TpAmount(cfi, lev, TypeName.柱模板, sfacesize, null, tpamount, 1);
                     tpAmountList.Add(cTpa);
                 }
-                
+            }
+        }
+
+        /// <summary>
+        /// 梁混凝土工程量计算
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="beamList">全部梁的集合</param>
+        /// <param name="joinBeamList">被剪切梁的集合</param>
+        /// <param name="tpAmountList">导出的工程量集合</param>
+        public TpCount(Document doc,List<FamilyInstance> beamList,TypeName tpname,out List<TpAmount> tpAmountList)
+        {
+            tpAmountList = new List<TpAmount>();
+            Level lev = doc.GetElement(beamList[0].Host.Id) as Level;
+            foreach (FamilyInstance beam in beamList)
+            {
+                double beamVolume = 0;
+               List<Solid> beamSolidList= bc.AllSolid_Of_Element(beam, ViewDetailLevel.Fine);
+                beamSolidList.ConvertAll(m => beamVolume += bc.EVToCV(m.Volume));
+                TpAmount beamConcret = new TpAmount(beam, lev,TypeName.梁砼工程量, beamVolume);
+                tpAmountList.Add(beamConcret);
             }
         }
     }

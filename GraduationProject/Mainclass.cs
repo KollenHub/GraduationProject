@@ -26,6 +26,8 @@ namespace TemplateCount
                 judge = win.p;
                 if (judge == 1)
                 {
+                    
+
                     List<List<TpAmount>> tpAList_List = new List<List<TpAmount>>();
                     //项目标高集合
                     List<Level> lev_List = bc.GetLevList(doc);
@@ -35,33 +37,43 @@ namespace TemplateCount
                     List<TpAmount> flTpa_List = new List<TpAmount>();
                     //柱模板集合
                     List<TpAmount> colTpa_List = new List<TpAmount>();
+                    //梁混凝土
+                    List<TpAmount> beamConcret_List = new List<TpAmount>();
+                    //柱混凝土
+                    List<TpAmount> colConcret_List = new List<TpAmount>();
+                    //板混凝土
+                    List<TpAmount> flConcret_List = new List<TpAmount>();
                     //获取所有构件分别对应的模板集合
-                    bc.AllELmentList(doc, lev_List, out beamTpa_List, out flTpa_List, out colTpa_List);
+                    bc.AllELmentList(doc, lev_List, out beamTpa_List, out flTpa_List, out colTpa_List, out beamConcret_List, out colConcret_List, out flConcret_List);
                     //try
                     //{
-                        List<string> strList = win.chbStrList;
-                        foreach (string str in strList)
+                    List<string> strList = win.chbStrList;
+                    foreach (string str in strList)
+                    {
+                        switch (str)
                         {
-                            switch (str)
-                            {
-                                case "梁模板":
-                                    tpAList_List.Add(beamTpa_List);
-                                    break;
-                                case "柱模板":
-                                    tpAList_List.Add(colTpa_List);
-                                    break;
-                                case "板模板":
-                                    tpAList_List.Add(flTpa_List);
-                                    break;
-                                case "剪力墙模板":
-                                    break;
-                                case "楼梯模板":
-                                    break;
-                                default:
-                                    break;
-                            }
+                            case "梁模板":
+                                tpAList_List.Add(beamTpa_List);
+                                break;
+                            case "柱模板":
+                                tpAList_List.Add(colTpa_List);
+                                break;
+                            case "板模板":
+                                tpAList_List.Add(flTpa_List);
+                                break;
+                            case "梁混凝土量":
+                                tpAList_List.Add(beamConcret_List);
+                                break;
+                            case "柱混凝土量":
+                                break;
+                            case "板混凝土量":
+                                break;
+
+                            default:
+                                break;
                         }
-                        ExportToExcel worsheet = new ExportToExcel(tpAList_List);
+                    }
+                    ExportToExcel worsheet = new ExportToExcel(tpAList_List);
                     //}
                     //catch
                     //{

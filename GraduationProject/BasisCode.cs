@@ -48,14 +48,15 @@ namespace TemplateCount
         }
 
         /// <summary>
-        /// 模板整合计算
+        /// 
         /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <param name="lev_List">标高集合</param>
-        /// <param name="beamTpa_List">梁集合</param>
-        /// <param name="flTpa_List">楼板集合</param>
-        /// <param name="colTpa_List">柱子集合</param>
-        public void AllELmentList(Document doc, List<Level> lev_List, out List<TpAmount> beamTpa_List, out List<TpAmount> flTpa_List, out List<TpAmount> colTpa_List)
+        /// <param name="doc"></param>
+        /// <param name="lev_List"></param>
+        /// <param name="beamTpa_List"></param>
+        /// <param name="flTpa_List"></param>
+        /// <param name="colTpa_List"></param>
+        /// <param name="beamConcret_List"></param>
+        public void AllELmentList(Document doc, List<Level> lev_List, out List<TpAmount> beamTpa_List, out List<TpAmount> flTpa_List, out List<TpAmount> colTpa_List, out List<TpAmount> beamConcret_List, out List<TpAmount> colConcret_List, out List<TpAmount> flConcret_List)
         {
             //梁的集合
             List<FamilyInstance> beamList = FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralFraming).ConvertAll(m => m as FamilyInstance);
@@ -67,6 +68,13 @@ namespace TemplateCount
             beamTpa_List = new List<TpAmount>();
             //板的模板集合
             flTpa_List = new List<TpAmount>();
+            //梁混凝土的集合
+            beamConcret_List = new List<TpAmount>();
+            //柱混凝土集合
+            colConcret_List = new List<TpAmount>();
+            //板混凝土集合
+            flConcret_List = new List<TpAmount>();
+
             //柱的模板集合
             colTpa_List = new List<TpAmount>();
             foreach (Level lev in lev_List)
@@ -78,8 +86,22 @@ namespace TemplateCount
                     List<FamilyInstance> levBeam_List = beamList.Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
                     List<FamilyInstance> beCutBeam_List = JoinBeamToBeam(levBeam_List, doc);
                     List<TpAmount> levBeamTpa = null;
-                    TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.Beam, out levBeamTpa);
+                    TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.梁模板, out levBeamTpa);
                     beamTpa_List.AddRange(levBeamTpa);
+                    List<TpAmount> levBeamCTpa = null;
+                    TpCount levBeamCTC = new TpCount(doc,levBeam_List,TpCount.TypeName.梁模板,out levBeamCTpa);
+                    beamConcret_List.AddRange(levBeamCTpa);
+                    //using (Transaction trans = new Transaction(doc, "复制模型线"))
+                    //{
+                    //    ModelLine oldml = null;//这是你要复制的模型线，我这里不知道是哪一个，就没赋值给他
+                    //    ModelLine ml = ElementTransformUtils.CopyElement(doc, oldml.Id, XYZ.Zero) as ModelLine;
+                    //    Curve lc = (ml.Location as LocationCurve).Curve;
+                    //    double thickness = 100 / 304.8;//100mm厚
+                    //    XYZ p1 = lc.GetEndPoint(0)+new XYZ(0,0,1)*thickness;
+                    //    XYZ p2 = lc.GetEndPoint(1)+new XYZ(0,0,1)*thickness;
+                    //    Curve nlc = Line.CreateBound(p1, p2);
+                    //    ml.GeometryCurve = nlc;
+                    //}
                 }
                 catch { }
                 //防止板为空
@@ -88,7 +110,7 @@ namespace TemplateCount
                     //该标高下板的模板集合
                     List<Floor> levFl_List = flList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
                     List<TpAmount> levFlTpa = null;
-                    TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.Floor, lev, out levFlTpa);
+                    TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.板模板, lev, out levFlTpa);
                     flTpa_List.AddRange(levFlTpa);
                 }
                 catch { }
@@ -393,7 +415,7 @@ namespace TemplateCount
                 double sfArea = EAToCA(flCutBeamArea);
                 double length = flCutBeamArea / h;
                 string bh = BAndH(length, h);
-                TpAmount tpa = new TpAmount(bfi, lev, "-", bh, -sfArea, 1);
+                TpAmount tpa = new TpAmount(bfi, lev, TpCount.TypeName.梁模板, "-", bh, -sfArea, 1);
                 tpamount_List.Add(tpa);
             }
             return tpamount_List;
@@ -406,6 +428,11 @@ namespace TemplateCount
         public double EAToCA(double Earea)
         {
             return Earea * Math.Pow(304.8, 2) / Math.Pow(10, 6);
+        }
+        ///
+        public double EVToCV(double EVolume)
+        {
+            return EVolume * Math.Pow(304.8, 3) / Math.Pow(10, 9);
         }
         /// <summary>
         /// 得到宽X长的毫米规范命名
@@ -597,6 +624,10 @@ namespace TemplateCount
                         str = "扣减尺寸";
                         i = 25;
                         break;
+                    case "ConcretVolumes":
+                        str = "混凝土工程量(m3)";
+                            i= 25;
+                        break;
                     case "TemplateAmount":
                         str = "模板面积(m2)";
                         i = 25;
@@ -604,6 +635,10 @@ namespace TemplateCount
                     case "TemplateNum":
                         str = "模板个数";
                         i = 15;
+                        break;
+                    case "MaterialName":
+                        str = "混凝土等级";
+                        i = 25;
                         break;
                     default:
                         break;
@@ -646,6 +681,60 @@ namespace TemplateCount
             }
 
             return bface;
+        }
+        /// <summary>
+        /// 获取实体的全部Solid
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="vdl"></param>
+        /// <returns></returns>
+        public List<Solid> AllSolid_Of_Element(Element e, ViewDetailLevel vdl)
+        {
+            List<Solid> solid_list = new List<Solid>();
+            try
+            {
+                Options options = new Options();
+                options.IncludeNonVisibleObjects = false;
+                options.DetailLevel = vdl;
+                options.ComputeReferences = true;
+
+                GeometryElement geoElement = e.get_Geometry(options);
+                IEnumerator enumerator = geoElement.GetEnumerator();
+                {
+                    while (enumerator.MoveNext())
+                    {
+                        GeometryObject geoObj = enumerator.Current as GeometryObject;
+                        if (geoObj is GeometryInstance)
+                        {
+                            GeometryInstance geoinstance = geoObj as GeometryInstance;
+                            GeometryElement geoObjtmp = geoinstance.GetInstanceGeometry();
+                            //GeometryElement geoObjtmp = geoinstance.GetSymbolGeometry();
+                            IEnumerator enumeratorobj = geoObjtmp.GetEnumerator();
+                            {
+                                while (enumeratorobj.MoveNext())
+                                {
+                                    GeometryObject obj2 = enumeratorobj.Current as GeometryObject;
+                                    if (obj2 is Solid)
+                                    {
+                                        Solid sd = obj2 as Solid;
+                                        if (sd.Volume>0)
+                                        solid_list.Add(obj2 as Solid);
+                                    }
+                                }
+                            }
+                        }
+                        else if (geoObj is Solid)
+                        {
+                            Solid sd = geoObj as Solid;
+                            if(sd.Volume>0)
+                            solid_list.Add(geoObj as Solid);
+                        }
+                    }
+                }
+            }
+            catch
+            { }
+            return solid_list;
         }
     }
 

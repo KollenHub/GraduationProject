@@ -11,7 +11,7 @@ using System.Windows.Forms;
 
 namespace TemplateCount
 {
-   public class ExportToExcel
+    public class ExportToExcel
     {
         public BasisCode bc = new BasisCode();
         public ExportToExcel(List<List<TpAmount>> list_List)
@@ -25,6 +25,9 @@ namespace TemplateCount
             sfd.ShowDialog();
             string path = sfd.FileName;
             FileInfo newFile = new FileInfo(path);
+            string fileName = path.Split(new char[] { '\\' }).Reverse().ToList().First();
+            string directory =Path.GetDirectoryName(path);
+
             //如果新文件存在的话则删除它
             if (newFile.Exists)
             {
@@ -35,7 +38,10 @@ namespace TemplateCount
                 }
                 catch
                 {
-                    MessageBox.Show("该文档正在被其他应用使用,无法删除", "警告", MessageBoxButtons.OK);
+                    string filename= fileName.Split(new char[] { '.'})[0] + new Random().Next(1, 10000)+"."+ fileName.Split(new char[] { '.' })[1];
+                    path = directory + "\\" + filename;
+                    MessageBox.Show("该文档正在被其他应用使用,无法删除,"+"\r\n已将新文件名更换为"+filename, "警告", MessageBoxButtons.OK);
+                    newFile = new FileInfo(path);
                 }
             }
             //新建工作簿
@@ -52,9 +58,9 @@ namespace TemplateCount
                     List<string> fieldsList = TpAFiieldTxt(tpa);
                     //转换后的属性名称
                     List<int> columnSizeList = new List<int>();
-                    List<string> proNameList = bc.ProTransform(fieldsList,out columnSizeList);
+                    List<string> proNameList = bc.ProTransform(fieldsList, out columnSizeList);
                     //将工作表的名字命名为该种构件的名称
-                    sheetList[i] = package.Workbook.Worksheets.Add(tpa.ComponentType);
+                    sheetList[i] = package.Workbook.Worksheets.Add(tpa.TypeName);
                     //当前所操作的工作表
                     ExcelWorksheet worksheet = sheetList[i];
                     //从第二行开始
@@ -70,29 +76,36 @@ namespace TemplateCount
                     {
                         int n = list.IndexOf(l);
                         //如果是相同的构件则把模板量加起来
-                      if (n == 0 || l.ElemId == list[n - 1].ElemId)
+                        if (n == 0 || l.ElemId == list[n - 1].ElemId)
                         {
-                            partAmount += l.TemplateAmount * l.TemplateNum;
+                            if (l.TemplateNum != 0)
+                                partAmount += l.TemplateAmount * l.TemplateNum;
+                            else partAmount += l.ConcretVolumes;
                             time++;
-                        }else if(time==1)//如果只有一个相同构件时
-                        {
-                            partAmount += l.TemplateAmount * l.TemplateNum;
-                            time = 0;
                         }
                         else//到某一行不是同一个构件时
                         {
-                            worksheet.Cells[row, fieldsList.Count - 1].Value = partAmount;
-                            worksheet.Cells[row, 1].Value = "合计";
-                            worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                            if (time > 1)
+                            {
+                                worksheet.Cells[row, fieldsList.Count - 1].Value = partAmount;
+                                worksheet.Cells[row, 1].Value = "合计";
+                                if (worksheet.Name.Contains("模板"))
+                                    worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                                else
+                                    worksheet.Cells[row, fieldsList.Count].Value = "立方米";
+                                row++;
+                            }
                             allAmount += partAmount;
-                            partAmount = l.TemplateAmount * l.TemplateNum;
-                            row++;
+                            if (l.TemplateNum != 0)
+                                partAmount = l.TemplateAmount * l.TemplateNum;
+                            else
+                                partAmount = l.ConcretVolumes;
                             time = 0;
                         }
                         //按照从属性的顺序一行一行的填数据
                         foreach (string str in fieldsList)
                         {
-                            if (row==2)
+                            if (row == 2)
                             {
                                 //第一行标题字段的对应文字
                                 worksheet.Cells[1, fieldsList.IndexOf(str) + 1].Value = proNameList.ElementAt(fieldsList.IndexOf(str));
@@ -110,13 +123,21 @@ namespace TemplateCount
                             //自动调整行高
                             worksheet.Row(row).CustomHeight = true;
                         }
-                        
                         row++;
                     }
                     i++;
-                    worksheet.Cells[row, fieldsList.Count - 1].Value = allAmount;
+                    
                     worksheet.Cells[row, 1].Value = "总计";
-                    worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                    if (worksheet.Name.Contains("模板"))
+                    {
+                        worksheet.Cells[row, fieldsList.Count - 1].Value = allAmount;
+                        worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                    }
+                    else
+                    {
+                        worksheet.Cells[row, fieldsList.Count].Value = allAmount;
+                        worksheet.Cells[row, fieldsList.Count+1].Value = "立方米";
+                    }
                     //设置字体，也可以是中文，比如：宋体
                     worksheet.Cells.Style.Font.Name = "宋体";
                     //字体加粗
@@ -151,12 +172,28 @@ namespace TemplateCount
 
         private List<string> TpAFiieldTxt(TpAmount l)
         {
+
             Type tpaTp = l.GetType();
             List<string> fieldList = new List<string>();
             PropertyInfo[] ps = tpaTp.GetProperties();
             foreach (PropertyInfo pi in ps)
             {
                 if (pi.GetValue(l) == null) continue;
+                try
+                {
+                    object obj = pi.GetValue(l);
+                    if (obj is int i)
+                    {
+                        if (i == 0) continue;
+                    }
+                    else if (obj is double d)
+                    {
+                        if (d == 0) continue;
+                    }
+                    //if (pi.GetType().IsPrimitive == true && (int)pi.GetValue(l) == 0)
+                    //    continue;
+                }
+                catch { }
                 fieldList.Add(pi.Name);
             }
             return fieldList;

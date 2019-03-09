@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Assembly>TemplateCount.dll</Assembly>
+    <ClientId>03688fc2-3520-498f-b7ba-69b04c0d85de</ClientId>
+    <FullClassName>TemplateCount.Avoidance</FullClassName>
+    <Text>Avoidance</Text>
+    <Description>""</Description>
+    <VisibilityMode>AlwaysVisible</VisibilityMode>
+    <VendorId>ADSK</VendorId>
+    <VendorDescription>Autodesk, www.autodesk.com</VendorDescription>
+  </AddIn>
+  <AddIn Type="Command">
+    <Assembly>TemplateCount.dll</Assembly>
+    <ClientId>a2c99976-8779-424f-8659-b442d718a11a</ClientId>
+    <FullClassName>TemplateCount.MainClass</FullClassName>
+    <Text>MainClass</Text>
+    <Description>""</Description>
+    <VisibilityMode>AlwaysVisible</VisibilityMode>
+    <VendorId>ADSK</VendorId>
+    <VendorDescription>Autodesk, www.autodesk.com</VendorDescription>
+  </AddIn>
+</RevitAddIns>
