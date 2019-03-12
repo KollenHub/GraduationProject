@@ -2,6 +2,7 @@
 using OfficeOpenXml.Style;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -26,7 +27,7 @@ namespace TemplateCount
             string path = sfd.FileName;
             FileInfo newFile = new FileInfo(path);
             string fileName = path.Split(new char[] { '\\' }).Reverse().ToList().First();
-            string directory =Path.GetDirectoryName(path);
+            string directory = Path.GetDirectoryName(path);
 
             //如果新文件存在的话则删除它
             if (newFile.Exists)
@@ -38,9 +39,9 @@ namespace TemplateCount
                 }
                 catch
                 {
-                    string filename= fileName.Split(new char[] { '.'})[0] + new Random().Next(1, 10000)+"."+ fileName.Split(new char[] { '.' })[1];
+                    string filename = fileName.Split(new char[] { '.' })[0] + new Random().Next(1, 10000) + "." + fileName.Split(new char[] { '.' })[1];
                     path = directory + "\\" + filename;
-                    MessageBox.Show("该文档正在被其他应用使用,无法删除,"+"\r\n已将新文件名更换为"+filename, "警告", MessageBoxButtons.OK);
+                    MessageBox.Show("该文档正在被其他应用使用,无法删除," + "\r\n已将新文件名更换为" + filename, "警告", MessageBoxButtons.OK);
                     newFile = new FileInfo(path);
                 }
             }
@@ -50,10 +51,10 @@ namespace TemplateCount
                 //
                 int i = 0;
                 ExcelWorksheet[] sheetList = new ExcelWorksheet[list_List.Count];
-                foreach (List<TpAmount> list in list_List)
+                foreach (List<TpAmount> tpaList in list_List)
                 {
                     //第一个文档
-                    TpAmount tpa = list.First();
+                    TpAmount tpa = tpaList.First();
                     //取得算量模板的属性
                     List<string> fieldsList = TpAFiieldTxt(tpa);
                     //转换后的属性名称
@@ -72,11 +73,11 @@ namespace TemplateCount
                     //存储相同的构件出现的次数
                     int time = 0;
                     //排列某个工作表
-                    foreach (TpAmount l in list)
+                    foreach (TpAmount l in tpaList)
                     {
-                        int n = list.IndexOf(l);
+                        int n = tpaList.IndexOf(l);
                         //如果是相同的构件则把模板量加起来
-                        if (n == 0 || l.ElemId == list[n - 1].ElemId)
+                        if (n == 0 || l.ElemId == tpaList[n - 1].ElemId)
                         {
                             if (l.TemplateNum != 0)
                                 partAmount += l.TemplateAmount * l.TemplateNum;
@@ -102,6 +103,9 @@ namespace TemplateCount
                                 partAmount = l.ConcretVolumes;
                             time = 0;
                         }
+                        //总计在最后一次时要加partAmount
+                        if (n==tpaList.Count-1)
+                            allAmount += partAmount;
                         //按照从属性的顺序一行一行的填数据
                         foreach (string str in fieldsList)
                         {
@@ -126,7 +130,7 @@ namespace TemplateCount
                         row++;
                     }
                     i++;
-                    
+
                     worksheet.Cells[row, 1].Value = "总计";
                     if (worksheet.Name.Contains("模板"))
                     {
@@ -136,7 +140,33 @@ namespace TemplateCount
                     else
                     {
                         worksheet.Cells[row, fieldsList.Count].Value = allAmount;
-                        worksheet.Cells[row, fieldsList.Count+1].Value = "立方米";
+                        worksheet.Cells[row, fieldsList.Count + 1].Value = "立方米";
+                    }
+                    row = row + 2;
+                    if (worksheet.Name.Contains("工程量"))
+                    {
+                        worksheet.Cells[row, 1].Value = "混凝土等级";
+                        worksheet.Cells[row, 2].Value = "总量";
+                        worksheet.Cells[row, 3].Value = "单位";
+                        row++;
+                        List<string> materiaTypes = new List<string>();
+                        for (int j = 0; j < tpaList.Count; j++)
+                        {
+                            TpAmount tp = tpaList[j];
+                            if (materiaTypes.Count == 0 || materiaTypes.Where(m => m == tp.MaterialName).Count() == 0)
+                                materiaTypes.Add(tp.MaterialName);
+                        }
+                        foreach (string materia in materiaTypes)
+                        {
+                            int index = materiaTypes.IndexOf(materia);
+                            double num = 0;
+                            tpaList.Where(m => m.MaterialName == materia).ToList().ConvertAll(m => num += m.ConcretVolumes);
+                            worksheet.Cells[row, 1].Value = materia;
+                            worksheet.Cells[row, 2].Value = bc.TRF(num, 3);
+                            worksheet.Cells[row, 3].Value = "立方米";
+                            row++;
+                        }
+
                     }
                     //设置字体，也可以是中文，比如：宋体
                     worksheet.Cells.Style.Font.Name = "宋体";
@@ -160,10 +190,19 @@ namespace TemplateCount
                     worksheet.Cells.Style.Numberformat.Format = "@";
                     //单元格自动适应大小
                     worksheet.Cells.Style.ShrinkToFit = true;
-                    worksheet.Column(1).Width = 20;
-                    worksheet.Column(2).Width = 20;
-                    worksheet.Column(6).Width = 25;
-                    worksheet.Column(7).Width = 25;
+                    for (int k = 0; k < columnSizeList.Count; k++)
+                    {
+                        worksheet.Column(k + 1).Width = columnSizeList[k];
+                    }
+
+                    for (int p = 1; p < row + 1; p++)
+                    {
+                        worksheet.Row(p).Height = 20;
+                        for (int l = 1; l < columnSizeList.Count + 1; l++)
+                        {
+                            worksheet.Cells[p, l].Style.Border.BorderAround(ExcelBorderStyle.Thin, Color.FromArgb(191, 191, 191));//设置单元格所有边框
+                        }
+                    }
                 }
                 package.Save();
             }

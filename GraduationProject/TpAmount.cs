@@ -63,7 +63,7 @@ namespace TemplateCount
         /// </summary>
         public int TemplateNum { get; set; }
 
-        
+
         public string TypeName = null;
         /// <summary>
         /// 多种多样的构件构造函数
@@ -89,7 +89,7 @@ namespace TemplateCount
                 this.componentHighth = fi.LookupParameter("长度").AsValueString();
             else
                 this.ComponentLength = fi.LookupParameter("长度").AsValueString();
-            this.TypeName = Enum.GetName(typeof(TpCount.TypeName),tpName);
+            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
             this.ElemId = fi.Id.IntegerValue;
             this.TemplateSize = templateSize;
             this.TemplateDelSize = tempDelSize;
@@ -104,7 +104,7 @@ namespace TemplateCount
         /// <param name="templateSize">模板尺寸</param>
         /// <param name="templateamount">模板量</param>
         /// <param name="num">模板数量</param>
-        public TpAmount(Floor fl, Level lev, TpCount.TypeName tpName, string templateSize,double templateamount, int num)
+        public TpAmount(Floor fl, Level lev, TpCount.TypeName tpName, string templateSize, double templateamount, int num)
         {
             this.ComponentName = fl.Name.ToString();
             this.ComponentType = fl.FloorType.FamilyName;
@@ -115,17 +115,25 @@ namespace TemplateCount
             this.TemplateNum = num;
             this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
         }
-        public TpAmount(FamilyInstance beam, Level lev,TpCount.TypeName tpName, double volumes)
+        /// <summary>
+        /// 梁柱混凝土字段
+        /// </summary>
+        /// <param name="borc"> 梁或者柱实例</param>
+        /// <param name="lev"> 标高</param>
+        /// <param name="tpName"> 类型</param>
+        /// <param name="volumes">工程量</param>
+        public TpAmount(FamilyInstance borc, Level lev, TpCount.TypeName tpName, double volumes)
         {
-            this.ComponentName = beam.Name.ToString();
-            this.ComponentType = beam.Symbol.Family.Name.ToString();
-            this.MaterialName = beam.LookupParameter("结构材质").AsValueString();
+            this.ComponentName = borc.Name.ToString();
+            this.ComponentType = borc.Symbol.Family.Name.ToString();
+            this.MaterialName = borc.LookupParameter("结构材质").AsValueString();
             this.LevelName = lev.Name.ToString();
-            this.ComponentLength = beam.LookupParameter("长度").AsValueString();
-            this.ElemId = beam.Id.IntegerValue;
+            this.ComponentLength = borc.LookupParameter("长度").AsValueString();
+            this.ElemId = borc.Id.IntegerValue;
             this.ConcretVolumes = bc.TRF(volumes, 3);
             this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
         }
+
 
     }
 }

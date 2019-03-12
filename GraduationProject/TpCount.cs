@@ -13,12 +13,12 @@ namespace TemplateCount
         //定义不同构件属性的枚举
         public enum TypeName
         {
-            板模板 =0,
-            梁模板= 1,
+            板模板 = 0,
+            梁模板 = 1,
             柱模板 = 2,
-            梁砼工程量=3,
-            板砼工程量=4,
-            柱砼工程量=5,          
+            梁砼工程量 = 3,
+            板砼工程量 = 4,
+            柱砼工程量 = 5,
 
         }
         /// <summary>
@@ -83,8 +83,8 @@ namespace TemplateCount
                     string bftp = bc.BAndH((bface.Area / b), b);
                     string sftp = bc.BAndH((sface.Area / h), h);
                     //分别创建对应的模板面积字段对象
-                    TpAmount btpa = new TpAmount(bfi, lev, TypeName.梁模板, bftp, "-", barea, 1);
-                    TpAmount stpa = new TpAmount(bfi, lev, TypeName.梁模板, sftp, "-", sarea, 2);
+                    TpAmount btpa = new TpAmount(bfi, lev, tpName, bftp, "-", barea, 1);
+                    TpAmount stpa = new TpAmount(bfi, lev, tpName, sftp, "-", sarea, 2);
                     tpAmountList.Add(btpa);
                     tpAmountList.Add(stpa);
                 }
@@ -119,7 +119,7 @@ namespace TemplateCount
                     double fsh = (fs.LookupParameter("h").AsDouble() * 304.8);
                     string delTpSize = fsb.ToString() + "mm x " + fsh.ToString() + "mm";
                     double delTpa = (fsb * fsh / 1000000);
-                    TpAmount sDelTpa = new TpAmount(bfi, lev, TypeName.梁模板, "-",  delTpSize, -delTpa, num);
+                    TpAmount sDelTpa = new TpAmount(bfi, lev, tpName, "-", delTpSize, -delTpa, num);
                 }
             }
 
@@ -140,7 +140,7 @@ namespace TemplateCount
                 Face bface = bc.SlabBottomFace(fl);
                 string bfaceSize = bc.SlabSize(bface, 0);
                 double tpamount = bc.EAToCA(bface.Area);
-                TpAmount flTpa = new TpAmount(fl, lev, TypeName.板模板, bfaceSize,  tpamount, 1);
+                TpAmount flTpa = new TpAmount(fl, lev, tpName, bfaceSize, tpamount, 1);
                 tpAmountList.Add(flTpa);
             }
         }
@@ -187,24 +187,34 @@ namespace TemplateCount
         }
 
         /// <summary>
-        /// 梁混凝土工程量计算
+        /// 梁柱混凝土工程量计算
         /// </summary>
         /// <param name="doc">项目文档</param>
-        /// <param name="beamList">全部梁的集合</param>
+        /// <param name="InstanceList">全部梁的集合</param>
         /// <param name="joinBeamList">被剪切梁的集合</param>
         /// <param name="tpAmountList">导出的工程量集合</param>
-        public TpCount(Document doc,List<FamilyInstance> beamList,TypeName tpname,out List<TpAmount> tpAmountList)
+        public TpCount(Document doc, List<FamilyInstance> InstanceList, TypeName tpname, out List<TpAmount> tpAmountList)
         {
             tpAmountList = new List<TpAmount>();
-            Level lev = doc.GetElement(beamList[0].Host.Id) as Level;
-            foreach (FamilyInstance beam in beamList)
+            Level lev = null;
+            if (tpname == TypeName.梁砼工程量)
             {
-                double beamVolume = 0;
-               List<Solid> beamSolidList= bc.AllSolid_Of_Element(beam, ViewDetailLevel.Fine);
-                beamSolidList.ConvertAll(m => beamVolume += bc.EVToCV(m.Volume));
-                TpAmount beamConcret = new TpAmount(beam, lev,TypeName.梁砼工程量, beamVolume);
+                lev = doc.GetElement(InstanceList[0].Host.Id) as Level;
+            }
+            else if (tpname==TypeName.柱砼工程量)
+            {
+                lev = doc.GetElement(InstanceList[0].LevelId) as Level;
+            }
+            foreach (FamilyInstance inst in InstanceList)
+            {
+                double instanceVolume = 0;
+                List<Solid> beamSolidList = bc.AllSolid_Of_Element(inst, ViewDetailLevel.Fine);
+                beamSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
+                TpAmount beamConcret = new TpAmount(inst, lev, tpname, instanceVolume);
                 tpAmountList.Add(beamConcret);
             }
         }
+
+
     }
 }

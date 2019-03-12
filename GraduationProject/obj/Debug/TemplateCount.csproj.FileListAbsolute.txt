@@ -13,7 +13,6 @@ E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.dll
 E:\GraduationProject\GraduationProject\obj\Debug\TemplateCount.pdb
 E:\BIMING\GraduationProject\GraduationProject\bin\Debug\TemplateCount.dll
 E:\BIMING\GraduationProject\GraduationProject\bin\Debug\TemplateCount.pdb
-E:\BIMING\GraduationProject\GraduationProject\bin\Debug\EPPlus.dll
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\App.baml
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\Win.baml
 E:\BIMING\GraduationProject\GraduationProject\obj\Debug\App.g.cs

@@ -65,6 +65,7 @@ namespace TemplateCount
                                 tpAList_List.Add(beamConcret_List);
                                 break;
                             case "柱混凝土量":
+                                tpAList_List.Add(colConcret_List);
                                 break;
                             case "板混凝土量":
                                 break;

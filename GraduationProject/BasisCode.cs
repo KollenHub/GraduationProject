@@ -84,13 +84,14 @@ namespace TemplateCount
                 {
                     //该标高下梁的模板集合
                     List<FamilyInstance> levBeam_List = beamList.Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
-                    List<FamilyInstance> beCutBeam_List = JoinBeamToBeam(levBeam_List, doc);
-                    List<TpAmount> levBeamTpa = null;
-                    TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.梁模板, out levBeamTpa);
-                    beamTpa_List.AddRange(levBeamTpa);
-                    List<TpAmount> levBeamCTpa = null;
-                    TpCount levBeamCTC = new TpCount(doc,levBeam_List,TpCount.TypeName.梁模板,out levBeamCTpa);
-                    beamConcret_List.AddRange(levBeamCTpa);
+                    if (levBeam_List.Count!=0)
+                    {
+                        List<FamilyInstance> beCutBeam_List = JoinBeamToBeam(levBeam_List, doc);
+                        TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.梁模板, out List<TpAmount> levBeamTpa);
+                        beamTpa_List.AddRange(levBeamTpa);
+                        TpCount levBeamCTC = new TpCount(doc, levBeam_List, TpCount.TypeName.梁模板, out List<TpAmount> levBeamCTpa);
+                        beamConcret_List.AddRange(levBeamCTpa);
+                    }
                     //using (Transaction trans = new Transaction(doc, "复制模型线"))
                     //{
                     //    ModelLine oldml = null;//这是你要复制的模型线，我这里不知道是哪一个，就没赋值给他
@@ -109,18 +110,25 @@ namespace TemplateCount
                 {
                     //该标高下板的模板集合
                     List<Floor> levFl_List = flList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    List<TpAmount> levFlTpa = null;
-                    TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.板模板, lev, out levFlTpa);
-                    flTpa_List.AddRange(levFlTpa);
+                    if (levFl_List.Count!=0)
+                    {
+                        TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.板模板, lev, out List<TpAmount> levFlTpa);
+                        flTpa_List.AddRange(levFlTpa);
+                    }
+                    
                 }
                 catch { }
                 //防止柱子为空
                 try
                 {
                     List<FamilyInstance> levCol_List = columnList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_BASE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    List<TpAmount> levColTpa = null;
-                    TpCount levColTC = new TpCount(doc, levCol_List, lev, out levColTpa);
-                    colTpa_List.AddRange(levColTpa);
+                    if (levCol_List.Count!=0)
+                    {
+                        TpCount levColTC = new TpCount(doc, levCol_List, lev, out List<TpAmount> levColTpa);
+                        colTpa_List.AddRange(levColTpa);
+                        TpCount levColCTC = new TpCount(doc, levCol_List, TpCount.TypeName.柱砼工程量, out List<TpAmount> levColCTpa);
+                        colConcret_List.AddRange(levColCTpa);
+                    }
                 }
                 catch
                 { }
