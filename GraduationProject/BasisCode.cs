@@ -9,16 +9,17 @@ using System.Threading.Tasks;
 using System.Windows;
 using SWF = System.Windows.Forms;
 using Autodesk.Revit.DB;
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
-    public class BasisCode
+    public static class BasisCode
     {
         /// <summary>
         /// 返回项目中按照高程从小到大排列后的标高集合
         /// </summary>
         /// <param name="doc">项目文档</param>
         /// <returns></returns>
-        public List<Level> GetLevList(Document doc)
+        public static List<Level> GetLevList(Document doc)
         {
             List<Level> levList = new FilteredElementCollector(doc).OfClass(typeof(Level)).OfCategory(BuiltInCategory.OST_Levels).ToList()
                 .ConvertAll(m => (m as Level)).OrderBy(m => m.Elevation).ToList();
@@ -31,9 +32,9 @@ namespace TemplateCount
         /// <param name="ty">查找的元素类型</param>
         /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
         /// <returns></returns>
-        public List<Element> FilterElementList(Document doc, Type ty, BuiltInCategory bIC)
+        public static List<Element> FilterElementList<T>(Document doc, BuiltInCategory bIC)where T:class
         {
-            List<Element> elemList = new FilteredElementCollector(doc).OfClass(ty).OfCategory(bIC).ToList();
+            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).OfCategory(bIC).ToList();
             return elemList;
         }
         /// <summary>
@@ -42,100 +43,20 @@ namespace TemplateCount
         /// <param name="doc">项目文档</param>
         /// <param name="ty">查找的元素类型</param>
         /// <returns></returns>
-        public List<Element> FilterElementList(Document doc, Type ty)
+        public static List<Element> FilterElementList<T>(Document doc)where T:class
         {
 
-            List<Element> elemList = new FilteredElementCollector(doc).OfClass(ty).ToList();
+            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).ToList();
             return elemList;
         }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="doc"></param>
-        /// <param name="lev_List"></param>
-        /// <param name="beamTpa_List"></param>
-        /// <param name="flTpa_List"></param>
-        /// <param name="colTpa_List"></param>
-        /// <param name="beamConcret_List"></param>
-        public void AllELmentList(Document doc, List<Level> lev_List, out List<TpAmount> beamTpa_List, out List<TpAmount> flTpa_List, out List<TpAmount> colTpa_List, out List<TpAmount> beamConcret_List, out List<TpAmount> colConcret_List, out List<TpAmount> flConcret_List)
-        {
-            //梁的集合
-            List<FamilyInstance> beamList = FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralFraming).ConvertAll(m => m as FamilyInstance);
-            //板的集合
-            List<Floor> flList = FilterElementList(doc, typeof(Floor)).ConvertAll(m => m as Floor);
-            //柱的集合
-            List<FamilyInstance> columnList = FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralColumns).ConvertAll(m => m as FamilyInstance);
-            //梁的模板集合
-            beamTpa_List = new List<TpAmount>();
-            //板的模板集合
-            flTpa_List = new List<TpAmount>();
-            //梁混凝土的集合
-            beamConcret_List = new List<TpAmount>();
-            //柱混凝土集合
-            colConcret_List = new List<TpAmount>();
-            //板混凝土集合
-            flConcret_List = new List<TpAmount>();
-
-            //柱的模板集合
-            colTpa_List = new List<TpAmount>();
-            foreach (Level lev in lev_List)
-            {
-                //防止梁的集合为零
-                try
-                {
-                    //该标高下梁的模板集合
-                    List<FamilyInstance> levBeam_List = beamList.Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levBeam_List.Count != 0)
-                    {
-                        List<FamilyInstance> beCutBeam_List = JoinBeamToBeam(levBeam_List, doc);
-                        TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.梁模板, out List<TpAmount> levBeamTpa);
-                        beamTpa_List.AddRange(levBeamTpa);
-                        TpCount levBeamCTC = new TpCount(doc, levBeam_List, TpCount.TypeName.梁砼工程量, out List<TpAmount> levBeamCTpa);
-                        beamConcret_List.AddRange(levBeamCTpa);
-                    }
-
-                }
-                catch { }
-                //防止板为空
-                try
-                {
-                    //该标高下板的模板集合
-                    List<Floor> levFl_List = flList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levFl_List.Count != 0)
-                    {
-                        TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.板模板, lev, out List<TpAmount> levFlTpa);
-                        flTpa_List.AddRange(levFlTpa);
-                        TpCount levFlCTC = new TpCount(doc, levFl_List, TpCount.TypeName.板砼工程量, out List<TpAmount> levFlCTpa);
-                        flConcret_List.AddRange(levFlCTpa);
-                    }
-
-                }
-                catch { }
-                //防止柱子为空
-                try
-                {
-                    List<FamilyInstance> levCol_List = columnList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_BASE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levCol_List.Count != 0)
-                    {
-                        TpCount levColTC = new TpCount(doc, levCol_List, lev, TpCount.TypeName.柱模板, out List<TpAmount> levColTpa);
-                        colTpa_List.AddRange(levColTpa);
-                        TpCount levColCTC = new TpCount(doc, levCol_List, TpCount.TypeName.柱砼工程量, out List<TpAmount> levColCTpa);
-                        colConcret_List.AddRange(levColCTpa);
-                    }
-                }
-                catch
-                { }
-            }
-        }
-
+        
         /// <summary>
         /// 返回过滤器元素集合
         /// </summary>
         /// <param name="doc">项目文档</param>
         /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
         /// <returns></returns>
-        public List<Element> FilterElementList(Document doc, BuiltInCategory bIC)
+        public static List<Element> FilterElementList(Document doc, BuiltInCategory bIC)
         {
             List<Element> elemList = new FilteredElementCollector(doc).OfCategory(bIC).ToList();
             return elemList;
@@ -147,7 +68,7 @@ namespace TemplateCount
         /// <param name="doc">项目文档</param>
         /// <param name="beam">梁实例</param>
         /// <returns>底面侧面集合</returns>
-        public List<List<Face>> AllFaceOfBeam(Document doc, FamilyInstance beam)
+        public static List<List<Face>> AllFaceOfBeam(Document doc, FamilyInstance beam)
         {
             //配套的侧面和底面的集合
             List<List<Face>> bsFaceList_List = new List<List<Face>>();
@@ -207,7 +128,7 @@ namespace TemplateCount
         /// </summary>
         /// <param name="cfi"></param>
         /// <returns></returns>
-        public List<Face> ComponentSideFace(FamilyInstance fi)
+        public static List<Face> ComponentSideFace(FamilyInstance fi)
         {
             List<Face> colsideFaces = new List<Face>();
             Options opt = new Options();
@@ -246,7 +167,7 @@ namespace TemplateCount
         /// <param name="delLengthSize">扣减长边的值(单位为英寸)</param>
         /// <param name="Area">扣减后的面积</param>
         /// <returns></returns>
-        public string SlabSize(Face bface, double delLengthSize, out double Area)
+        public static string SlabSize(Face bface, double delLengthSize, out double Area)
         {
             EdgeArrayArray eArrAray = bface.EdgeLoops;
             if (eArrAray.Size > 1)
@@ -297,7 +218,7 @@ namespace TemplateCount
         /// <param name="bface">楼板底面的面</param>
         /// <param name="delLengthSize">扣减长边的值(单位为英寸)</param>
         /// <returns></returns>
-        public string SlabSize(Face bface, double delLengthSize)
+        public static string SlabSize(Face bface, double delLengthSize)
         {
             EdgeArrayArray eArrAray = bface.EdgeLoops;
             if (eArrAray.Size > 1)
@@ -324,7 +245,7 @@ namespace TemplateCount
                         double angle = dirt1.X * dirt2.X + dirt1.Y * dirt2.Y + dirt1.Z * dirt2.Z;
                         if (Math.Abs(angle) <= 0.001)
                         {
-                            double length1 = TRF(l1.Length);
+                            double length1 = bc.TRF(l1.Length);
                             double length2 = TRF(l2.Length);
                             string s = length1 > length2 ? BAndH(l1.Length - delLengthSize, l2.Length) : BAndH(l2.Length - delLengthSize, l1.Length);
                             return s;
@@ -342,7 +263,7 @@ namespace TemplateCount
         /// <param name="fi">剪切梁</param>
         /// <param name="ficut">被剪切梁</param>
         /// <returns>相交的面的个数</returns>
-        public int BtoBFaceNum(FamilyInstance fi, FamilyInstance ficut)
+        public static int BtoBFaceNum(FamilyInstance fi, FamilyInstance ficut)
         {
             int i = 0;
             Line filine = (fi.Location as LocationCurve).Curve as Line;
@@ -373,7 +294,7 @@ namespace TemplateCount
         /// <param name="l1">平行线1</param>
         /// <param name="l2">平行线2</param>
         /// <returns>两线间距离</returns>
-        public double LineToLineDistance(Line l1, Line l2)
+        public static double LineToLineDistance(Line l1, Line l2)
         {
             //利用海伦公式求取三角形的高度
             XYZ top = l1.GetEndPoint(0);
@@ -400,9 +321,9 @@ namespace TemplateCount
         /// <param name="bfi">梁实例</param>
         /// <param name="doc"> 项目文旦</param>
         /// <returns></returns>
-        public List<TpAmount> CutByFloorAmount(FamilyInstance bfi, Document doc)
+        public static List<ProjectAmount> CutByFloorAmount(FamilyInstance bfi, Document doc)
         {
-            List<TpAmount> tpamount_List = new List<TpAmount>();
+            List<ProjectAmount> tpamount_List = new List<ProjectAmount>();
             List<Floor> bfiFl_List = JoinGeometryUtils.GetJoinedElements(doc, bfi).Where(m => doc.GetElement(m) is Floor).ToList()
                 .ConvertAll(m => doc.GetElement(m) as Floor);
             Level lev = bfi.Host as Level;
@@ -417,7 +338,7 @@ namespace TemplateCount
                 double sfArea = EAToCA(flCutBeamArea);
                 double length = flCutBeamArea / h;
                 string bh = BAndH(length, h);
-                TpAmount tpa = new TpAmount(bfi, lev, TpCount.TypeName.梁模板, "-", bh, -sfArea, 1);
+                ProjectAmount tpa = new ProjectAmount(bfi, lev, ProjectCountCommand.TypeName.梁模板, "-", bh, -sfArea, 1);
                 tpamount_List.Add(tpa);
             }
             return tpamount_List;
@@ -427,12 +348,12 @@ namespace TemplateCount
         /// 转换面积（中转英）
         /// </summary>
         /// <param name="Earea"></param>
-        public double EAToCA(double Earea)
+        public static double EAToCA(double Earea)
         {
             return Earea * Math.Pow(304.8, 2) / Math.Pow(10, 6);
         }
         ///
-        public double EVToCV(double EVolume)
+        public static double EVToCV(double EVolume)
         {
             return EVolume * Math.Pow(304.8, 3) / Math.Pow(10, 9);
         }
@@ -442,7 +363,7 @@ namespace TemplateCount
         /// <param name="length"></param>
         /// <param name="width"></param>
         /// <returns></returns>
-        public string BAndH(double length, double width)
+        public static string BAndH(double length, double width)
         {
             return TRF(width * 304.8, 0).ToString() + "mm x " + TRF((length * 304.8), 0).ToString() + "mm";
         }
@@ -452,7 +373,7 @@ namespace TemplateCount
         /// <param name="bfi">梁实例</param>
         /// <param name="bfl">楼板实例</param>
         /// <returns></returns>
-        public double GetFlCutBeamArea(FamilyInstance beam, Floor fl)
+        public static double GetFlCutBeamArea(FamilyInstance beam, Floor fl)
         {
             //获取梁的中心线
             Line beamLine = (beam.Location as LocationCurve).Curve as Line;
@@ -512,7 +433,7 @@ namespace TemplateCount
         /// </summary>
         /// <param name="beamList">梁集合</param>
         /// /// <param name="doc">项目文档</param>
-        public List<FamilyInstance> JoinBeamToBeam(List<FamilyInstance> beamList, Document doc)
+        public static List<FamilyInstance> JoinBeamToBeam(List<FamilyInstance> beamList, Document doc)
         {
             using (Transaction trans = new Transaction(doc, "梁连接"))
             {
@@ -564,7 +485,7 @@ namespace TemplateCount
         /// <param name="lastDouble">转换的数</param>
         /// <param name="i">保留的小数位数</param>
         /// <returns></returns>
-        public double TRF(double lastDouble, int i)
+        public static double TRF(double lastDouble, int i)
         {
             double tf = lastDouble * Math.Pow(10, i);
             int integer = Convert.ToInt32(tf);
@@ -576,7 +497,7 @@ namespace TemplateCount
         /// </summary>
         /// <param name="lastDouble">转换的数</param>
         /// <returns></returns>
-        public double TRF(double lastDouble)
+        public static double TRF(double lastDouble)
         {
             double tf = Convert.ToDouble(lastDouble.ToString("0.######"));
             return tf;
@@ -586,7 +507,7 @@ namespace TemplateCount
         /// </summary>
         /// <param name="strlist"></param>
         /// <returns></returns>
-        public List<string> ProTransform(List<string> strlist, out List<int> columnSizeList)
+        public static List<string> ProTransform(List<string> strlist, out List<int> columnSizeList)
         {
             List<string> proNameList = new List<string>();
             columnSizeList = new List<int>();
@@ -656,7 +577,7 @@ namespace TemplateCount
         /// </summary>
         /// <param name="fl">楼板</param>
         /// <returns></returns>
-        public Face SlabBottomFace(Floor fl)
+        public static Face SlabBottomFace(Floor fl)
         {
             Face bface = null;
             Options opt = new Options();
@@ -690,7 +611,7 @@ namespace TemplateCount
         /// <param name="e"></param>
         /// <param name="vdl"></param>
         /// <returns></returns>
-        public List<Solid> AllSolid_Of_Element(Element e)
+        public static List<Solid> AllSolid_Of_Element(Element e)
         {
             List<Solid> solid_list = new List<Solid>();
             try
@@ -739,7 +660,7 @@ namespace TemplateCount
             return solid_list;
         }
 
-        public ElementId SurfaceLayerGernerate(Document doc, Face face, DirectShapeType drt, ElementId HostELemID)
+        public static ElementId SurfaceLayerGernerate(Document doc, Face face, DirectShapeType drt, ElementId HostELemID)
         {
             DirectShape dsElem = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_Parts), Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
             XYZ faceNormal = face.ComputeNormal(new UV(0, 0));
@@ -787,7 +708,7 @@ namespace TemplateCount
             return dsElem.Id;
         }
 
-        public Solid SolidHandle(Document doc, ElementId hostELemID, Solid sd)
+        public static Solid SolidHandle(Document doc, ElementId hostELemID, Solid sd)
         {
             Element hostElem = doc.GetElement(hostELemID);
             List<Element> elembeCutList = JoinGeometryUtils.GetJoinedElements(doc, hostElem).Where(m =>
@@ -839,7 +760,7 @@ namespace TemplateCount
         /// <param name="doc"></param>
         /// <param name="app"></param>
         /// <returns></returns>
-        public bool ShareParameterGenerate(Document doc, Autodesk.Revit.ApplicationServices.Application app)
+        public  static bool ShareParameterGenerate(Document doc, Autodesk.Revit.ApplicationServices.Application app)
         {
             //设置共享参数
             string TxtFileName = app.RecordingJournalFilename;
@@ -924,7 +845,7 @@ namespace TemplateCount
             Material partMat = null;
             try
             {
-                partMat = FilterElementList(doc, typeof(Material)).Where(m => m.Name == "模板材质").First() as Material;
+                partMat = FilterElementList<Material>(doc).Where(m => m.Name == "模板材质").First() as Material;
             }
             catch
             {

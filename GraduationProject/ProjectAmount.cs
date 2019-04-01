@@ -4,15 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.DB;
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
 
     /// <summary>
     /// 存储execel表存储的字段
     /// </summary>
-    public class TpAmount
+    public class ProjectAmount
     {
-        public BasisCode bc = new BasisCode();
         //通用属性
         /// <summary>
         /// 构件名称（实例名称）
@@ -68,7 +68,7 @@ namespace TemplateCount
         /// <summary>
         /// 多种多样的构件构造函数
         /// </summary>
-        public TpAmount()
+        public ProjectAmount()
         {
         }
         /// <summary>
@@ -80,7 +80,7 @@ namespace TemplateCount
         /// <param name="tempDelSize">模板扣减数量（平方米）</param>
         /// <param name="templateamount">模板最终的数量（平方米）</param>
         /// <param name="num">个数</param>
-        public TpAmount(FamilyInstance fi, Level lev, TpCount.TypeName tpName, string templateSize, string tempDelSize, double templateamount, int num)
+        public ProjectAmount(FamilyInstance fi, Level lev, ProjectCountCommand.TypeName tpName, string templateSize, string tempDelSize, double templateamount, int num)
         {
             this.ComponentName = fi.Name.ToString();
             this.ComponentType = fi.Symbol.Family.Name.ToString();
@@ -89,7 +89,7 @@ namespace TemplateCount
                 this.componentHighth = fi.LookupParameter("长度").AsValueString();
             else
                 this.ComponentLength = fi.LookupParameter("长度").AsValueString();
-            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
             this.ElemId = fi.Id.IntegerValue;
             this.TemplateSize = templateSize;
             this.TemplateDelSize = tempDelSize;
@@ -104,7 +104,7 @@ namespace TemplateCount
         /// <param name="templateSize">模板尺寸</param>
         /// <param name="templateamount">模板量</param>
         /// <param name="num">模板数量</param>
-        public TpAmount(Floor fl, Level lev, TpCount.TypeName tpName, string templateSize, double templateamount, int num)
+        public ProjectAmount(Floor fl, Level lev, ProjectCountCommand.TypeName tpName, string templateSize, double templateamount, int num)
         {
             this.ComponentName = fl.Name.ToString();
             this.ComponentType = fl.FloorType.FamilyName;
@@ -113,7 +113,7 @@ namespace TemplateCount
             this.TemplateSize = templateSize;
             this.TemplateAmount = bc.TRF(templateamount, 3);
             this.TemplateNum = num;
-            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
         }
         /// <summary>
         /// 梁柱混凝土字段
@@ -122,7 +122,7 @@ namespace TemplateCount
         /// <param name="lev"> 标高</param>
         /// <param name="tpName"> 类型</param>
         /// <param name="volumes">工程量</param>
-        public TpAmount(FamilyInstance borc, Level lev, TpCount.TypeName tpName, double volumes)
+        public ProjectAmount(FamilyInstance borc, Level lev, ProjectCountCommand.TypeName tpName, double volumes)
         {
             this.ComponentName = borc.Name.ToString();
             this.ComponentType = borc.Symbol.Family.Name.ToString();
@@ -131,7 +131,7 @@ namespace TemplateCount
             this.ComponentLength = borc.LookupParameter("长度").AsValueString();
             this.ElemId = borc.Id.IntegerValue;
             this.ConcretVolumes = bc.TRF(volumes, 3);
-            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
         }
         /// <summary>
         /// 板混凝土字段
@@ -140,7 +140,7 @@ namespace TemplateCount
         /// <param name="lev"> 标高</param>
         /// <param name="tpName"> 类型</param>
         /// <param name="volumes">工程量</param>
-        public TpAmount(Floor fl, Level lev, TpCount.TypeName tpName, double volumes)
+        public ProjectAmount(Floor fl, Level lev, ProjectCountCommand.TypeName tpName, double volumes)
         {
             this.ComponentName = fl.Name.ToString();
             this.ComponentType = fl.FloorType.Name.ToString();
@@ -155,7 +155,7 @@ namespace TemplateCount
             this.LevelName = lev.Name.ToString();
             this.ElemId = fl.Id.IntegerValue;
             this.ConcretVolumes = bc.TRF(volumes, 3);
-            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
         }
 
     }

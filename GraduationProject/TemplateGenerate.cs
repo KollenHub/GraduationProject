@@ -9,13 +9,12 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.ApplicationServices;
 using System.IO;
-
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
     [Transaction(TransactionMode.Manual)]
     public class TemplateGenerate : IExternalCommand
     {
-        BasisCode bc = new BasisCode();
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
@@ -32,17 +31,17 @@ namespace TemplateCount
                     bool b = bc.ShareParameterGenerate(doc, app);
                     transShare.Commit();
                     if (b == false) transGroup.RollBack();
-                    if (bc.FilterElementList(doc, typeof(DirectShapeType)).Where(m => m.Name == "模板").Count() == 0)
+                    if (bc.FilterElementList<DirectShape>(doc).Where(m => m.Name == "模板").Count() == 0)
                     {
                         Transaction transCreat = new Transaction(doc, "创建类型");
                         transCreat.Start();
                         dst = DirectShapeType.Create(doc, "模板", new ElementId(BuiltInCategory.OST_Parts));
                         transCreat.Commit();
                     }
-                    else dst = bc.FilterElementList(doc, typeof(DirectShapeType)).Where(m => m.Name == "模板").First() as DirectShapeType;
-                    List<Floor> floorList = bc.FilterElementList(doc, typeof(Floor)).ConvertAll(m => m as Floor);
-                    List<Element> beamList = bc.FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralFraming);
-                    List<Element> colList = bc.FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralColumns);
+                    else dst = bc.FilterElementList<DirectShape>(doc).Where(m => m.Name == "模板").First() as DirectShapeType;
+                    List<Floor> floorList = bc.FilterElementList<Floor>(doc).ConvertAll(m => m as Floor);
+                    List<Element> beamList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralFraming);
+                    List<Element> colList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns);
 
                     string failureElemIds = null;
                     Transaction trans = new Transaction(doc, "创建模板");

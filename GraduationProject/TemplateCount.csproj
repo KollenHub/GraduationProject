@@ -70,10 +70,10 @@
     <Compile Include="TemplateGenerate.cs" />
     <Compile Include="ConflictResolution.cs" />
     <Compile Include="BasisCode.cs" />
-    <Compile Include="TpCount.cs" />
+    <Compile Include="ProjectCountCommand.cs" />
     <Compile Include="ExportToExcel.cs" />
     <Compile Include="Mainclass.cs" />
-    <Compile Include="TpAmount.cs" />
+    <Compile Include="ProjectAmount.cs" />
     <Compile Include="Win.cs">
       <DependentUpon>Win.xaml</DependentUpon>
     </Compile>

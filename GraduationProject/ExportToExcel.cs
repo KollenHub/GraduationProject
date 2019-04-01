@@ -9,13 +9,12 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
     public class ExportToExcel
     {
-        public BasisCode bc = new BasisCode();
-        public ExportToExcel(List<List<TpAmount>> list_List)
+        public ExportToExcel(List<List<ProjectAmount>> list_List)
         {
             //保存文件
             SaveFileDialog sfd = new SaveFileDialog();
@@ -51,10 +50,10 @@ namespace TemplateCount
                 //
                 int i = 0;
                 ExcelWorksheet[] sheetList = new ExcelWorksheet[list_List.Count];
-                foreach (List<TpAmount> tpaList in list_List)
+                foreach (List<ProjectAmount> tpaList in list_List)
                 {
                     //第一个文档
-                    TpAmount tpa = tpaList.First();
+                    ProjectAmount tpa = tpaList.First();
                     //取得算量模板的属性
                     List<string> fieldsList = TpAFiieldTxt(tpa);
                     //转换后的属性名称
@@ -73,7 +72,7 @@ namespace TemplateCount
                     //存储相同的构件出现的次数
                     int time = 0;
                     //排列某个工作表
-                    foreach (TpAmount l in tpaList)
+                    foreach (ProjectAmount l in tpaList)
                     {
                         int n = tpaList.IndexOf(l);
                         //如果是相同的构件则把模板量加起来
@@ -164,7 +163,7 @@ namespace TemplateCount
                         List<string> materiaTypes = new List<string>();
                         for (int j = 0; j < tpaList.Count; j++)
                         {
-                            TpAmount tp = tpaList[j];
+                            ProjectAmount tp = tpaList[j];
                             if (materiaTypes.Count == 0 || materiaTypes.Where(m => m == tp.MaterialName).Count() == 0)
                                 materiaTypes.Add(tp.MaterialName);
                         }
@@ -221,7 +220,7 @@ namespace TemplateCount
 
         }
 
-        private List<string> TpAFiieldTxt(TpAmount l)
+        private List<string> TpAFiieldTxt(ProjectAmount l)
         {
 
             Type tpaTp = l.GetType();

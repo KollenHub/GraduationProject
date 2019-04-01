@@ -7,6 +7,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB.Structure;
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
     [Transaction(TransactionMode.Manual)]
@@ -15,7 +16,6 @@ namespace TemplateCount
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            BasisCode bc = new BasisCode();
             UIDocument uiDoc = commandData.Application.ActiveUIDocument;
             Document doc = uiDoc.Document;
             int judge = 100;
@@ -26,7 +26,7 @@ namespace TemplateCount
                 judge = win.p;
                 if (judge == 1)
                 {
-                    List<List<TpAmount>> tpAList_List = new List<List<TpAmount>>();
+                    List<List<ProjectAmount>> tpAList_List = new List<List<ProjectAmount>>();
                     //项目标高集合
                     List<int> levIndexList =new List<int>();
                     foreach (int i in win.levList)
@@ -36,19 +36,18 @@ namespace TemplateCount
                     List<Level> lev_List = levIndexList.ConvertAll(m=>bc.GetLevList(doc).ElementAt(m-1));
                     
                     //梁模板集合
-                    List<TpAmount> beamTpa_List = new List<TpAmount>();
+                    List<ProjectAmount> beamTpa_List = new List<ProjectAmount>();
                     //板模板集合
-                    List<TpAmount> flTpa_List = new List<TpAmount>();
+                    List<ProjectAmount> flTpa_List = new List<ProjectAmount>();
                     //柱模板集合
-                    List<TpAmount> colTpa_List = new List<TpAmount>();
+                    List<ProjectAmount> colTpa_List = new List<ProjectAmount>();
                     //梁混凝土
-                    List<TpAmount> beamConcret_List = new List<TpAmount>();
+                    List<ProjectAmount> beamConcret_List = new List<ProjectAmount>();
                     //柱混凝土
-                    List<TpAmount> colConcret_List = new List<TpAmount>();
+                    List<ProjectAmount> colConcret_List = new List<ProjectAmount>();
                     //板混凝土
-                    List<TpAmount> flConcret_List = new List<TpAmount>();
+                    List<ProjectAmount> flConcret_List = new List<ProjectAmount>();
                     //获取所有构件分别对应的模板集合
-                    bc.AllELmentList(doc, lev_List, out beamTpa_List, out flTpa_List, out colTpa_List, out beamConcret_List, out colConcret_List, out flConcret_List);
                     try
                     {
                         List<string> strList = win.chbStrList;

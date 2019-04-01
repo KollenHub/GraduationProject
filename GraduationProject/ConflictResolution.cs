@@ -7,20 +7,18 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB.Structure;
-
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class ConflictResolution : IExternalCommand
     {
-        public BasisCode bc = new BasisCode();
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
-            BasisCode bc = new BasisCode();
-            List<Level> levList = bc.GetLevList(doc);
+            List<Level> levList = BasisCode.GetLevList(doc);
             //所有需要配模板的墙的集合
             List<List<Wall>> wallListList = new List<List<Wall>>();
             //所有需要配模板的梁的集合
@@ -34,18 +32,18 @@ namespace TemplateCount
             {
                 Level lev = levList[i];
                 //需要配模的墙实例
-                List<Wall> wallList = bc.FilterElementList(doc, typeof(Wall)).ConvertAll(m => m as Wall).Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
+                List<Wall> wallList = bc.FilterElementList<Wall>(doc).ConvertAll(m => m as Wall).Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
                 //需要配模的梁实例
-                List<FamilyInstance> beamList = bc.FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralFraming)
+                List<FamilyInstance> beamList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralFraming)
                     .ConvertAll(m => m as FamilyInstance).Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
                 //需要配模的柱实例
-                List<FamilyInstance> colList = bc.FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralColumns)
+                List<FamilyInstance> colList = bc.FilterElementList(doc, BuiltInCategory.OST_StructuralColumns)
                     .ConvertAll(m => m as FamilyInstance).Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
                 //标高以下的柱子
                 List<FamilyInstance> nextColList = null;
                 if (i > 0)
                 {
-                    nextColList = bc.FilterElementList(doc, typeof(FamilyInstance), BuiltInCategory.OST_StructuralColumns)
+                    nextColList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns)
                         .ConvertAll(m => m as FamilyInstance).Where(m => m.LevelId.IntegerValue == levList[i - 1].Id.IntegerValue).ToList();
                 }
                 //参与比较的柱子
@@ -57,7 +55,7 @@ namespace TemplateCount
                 else { compareColList = nextColList; }
 
                 //需要配模的楼板实例
-                List<Floor> flList = bc.FilterElementList(doc, typeof(Floor), BuiltInCategory.OST_Floors).ConvertAll(m => m as Floor)
+                List<Floor> flList = bc.FilterElementList<Floor>(doc, BuiltInCategory.OST_Floors).ConvertAll(m => m as Floor)
                     .Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
                 JoinBeamAndColumns(ref beamList, compareColList, doc);
                 List<FamilyInstance> beCutBeam_List = bc.JoinBeamToBeam(beamList, doc);

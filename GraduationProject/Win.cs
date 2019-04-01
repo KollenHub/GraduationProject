@@ -14,7 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
-
+using bc = TemplateCount.BasisCode;
 namespace TemplateCount
 {
     /// <summary>
@@ -43,7 +43,6 @@ namespace TemplateCount
             chbBc.IsChecked = true;
             chbFc.IsChecked = true;
             chbCc.IsChecked = true;
-            BasisCode bc = new BasisCode();
             List<Level> levList = bc.GetLevList(uiDoc.Document);
             fstCmb.ItemsSource = levList.ConvertAll(m => m.Name);
             fstCmb.SelectedIndex = 0;
