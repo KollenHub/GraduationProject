@@ -2,7 +2,7 @@
 <RevitAddIns>
   <AddIn Type="Command">
     <Assembly>TemplateCount.dll</Assembly>
-    <ClientId>03688fc2-3520-498f-b7ba-69b04c0d85de</ClientId>
+    <ClientId>990fe22a-1ae9-402d-968c-9491f82fb95b</ClientId>
     <FullClassName>TemplateCount.Avoidance</FullClassName>
     <Text>Avoidance</Text>
     <Description>""</Description>
@@ -12,7 +12,7 @@
   </AddIn>
   <AddIn Type="Command">
     <Assembly>TemplateCount.dll</Assembly>
-    <ClientId>a2c99976-8779-424f-8659-b442d718a11a</ClientId>
+    <ClientId>cde08c58-96ff-4973-8194-058862d1e5f0</ClientId>
     <FullClassName>TemplateCount.MainClass</FullClassName>
     <Text>MainClass</Text>
     <Description>""</Description>

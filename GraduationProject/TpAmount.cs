@@ -118,7 +118,7 @@ namespace TemplateCount
         /// <summary>
         /// 梁柱混凝土字段
         /// </summary>
-        /// <param name="borc"> 梁或者柱实例</param>
+        /// <param name="fl"> 梁或者柱实例</param>
         /// <param name="lev"> 标高</param>
         /// <param name="tpName"> 类型</param>
         /// <param name="volumes">工程量</param>
@@ -133,7 +133,30 @@ namespace TemplateCount
             this.ConcretVolumes = bc.TRF(volumes, 3);
             this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
         }
-
+        /// <summary>
+        /// 板混凝土字段
+        /// </summary>
+        /// <param name="fl"> 板</param>
+        /// <param name="lev"> 标高</param>
+        /// <param name="tpName"> 类型</param>
+        /// <param name="volumes">工程量</param>
+        public TpAmount(Floor fl, Level lev, TpCount.TypeName tpName, double volumes)
+        {
+            this.ComponentName = fl.Name.ToString();
+            this.ComponentType = fl.FloorType.Name.ToString();
+            try
+            {
+                this.MaterialName = fl.LookupParameter("结构材质").AsValueString();
+            }
+            catch
+            {
+                this.MaterialName = "无材质";
+            }
+            this.LevelName = lev.Name.ToString();
+            this.ElemId = fl.Id.IntegerValue;
+            this.ConcretVolumes = bc.TRF(volumes, 3);
+            this.TypeName = Enum.GetName(typeof(TpCount.TypeName), tpName);
+        }
 
     }
 }

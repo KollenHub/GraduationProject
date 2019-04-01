@@ -67,7 +67,8 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Avoidance.cs" />
+    <Compile Include="TemplateGenerate.cs" />
+    <Compile Include="ConflictResolution.cs" />
     <Compile Include="BasisCode.cs" />
     <Compile Include="TpCount.cs" />
     <Compile Include="ExportToExcel.cs" />

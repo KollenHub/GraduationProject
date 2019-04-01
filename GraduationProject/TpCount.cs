@@ -151,7 +151,7 @@ namespace TemplateCount
         /// <param name="colList">柱子的实例集合</param>
         /// <param name="lev">柱子所在标高</param>
         /// <param name="tpAmountList">模板量</param>
-        public TpCount(Document doc, List<FamilyInstance> colList, Level lev, out List<TpAmount> tpAmountList)
+        public TpCount(Document doc, List<FamilyInstance> colList, Level lev,TpCount.TypeName tyname, out List<TpAmount> tpAmountList)
         {
             tpAmountList = new List<TpAmount>();
 
@@ -208,10 +208,23 @@ namespace TemplateCount
             foreach (FamilyInstance inst in InstanceList)
             {
                 double instanceVolume = 0;
-                List<Solid> beamSolidList = bc.AllSolid_Of_Element(inst, ViewDetailLevel.Fine);
-                beamSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
-                TpAmount beamConcret = new TpAmount(inst, lev, tpname, instanceVolume);
-                tpAmountList.Add(beamConcret);
+                List<Solid> instanceSolidList = bc.AllSolid_Of_Element(inst);
+                instanceSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
+                TpAmount instanceConcret = new TpAmount(inst, lev, tpname, instanceVolume);
+                tpAmountList.Add(instanceConcret);
+            }
+        }
+        public TpCount(Document doc,List<Floor> flList,TypeName tpname,out List<TpAmount> tpAmountList)
+        {
+            tpAmountList = new List<TpAmount>();
+            Level lev = doc.GetElement(flList[0].LevelId) as Level;
+            foreach (Floor fl in flList)
+            {
+                double instanceVolume = 0;
+                List<Solid> flSolidList = bc.AllSolid_Of_Element(fl);
+                flSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
+                TpAmount flConcret = new TpAmount(fl, lev, TypeName.板砼工程量, instanceVolume);
+                tpAmountList.Add(flConcret);
             }
         }
 

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using SWF = System.Windows.Forms;
 using Autodesk.Revit.DB;
 namespace TemplateCount
 {
@@ -84,25 +86,15 @@ namespace TemplateCount
                 {
                     //该标高下梁的模板集合
                     List<FamilyInstance> levBeam_List = beamList.Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levBeam_List.Count!=0)
+                    if (levBeam_List.Count != 0)
                     {
                         List<FamilyInstance> beCutBeam_List = JoinBeamToBeam(levBeam_List, doc);
                         TpCount levBeamTC = new TpCount(doc, beCutBeam_List, levBeam_List, TpCount.TypeName.梁模板, out List<TpAmount> levBeamTpa);
                         beamTpa_List.AddRange(levBeamTpa);
-                        TpCount levBeamCTC = new TpCount(doc, levBeam_List, TpCount.TypeName.梁模板, out List<TpAmount> levBeamCTpa);
+                        TpCount levBeamCTC = new TpCount(doc, levBeam_List, TpCount.TypeName.梁砼工程量, out List<TpAmount> levBeamCTpa);
                         beamConcret_List.AddRange(levBeamCTpa);
                     }
-                    //using (Transaction trans = new Transaction(doc, "复制模型线"))
-                    //{
-                    //    ModelLine oldml = null;//这是你要复制的模型线，我这里不知道是哪一个，就没赋值给他
-                    //    ModelLine ml = ElementTransformUtils.CopyElement(doc, oldml.Id, XYZ.Zero) as ModelLine;
-                    //    Curve lc = (ml.Location as LocationCurve).Curve;
-                    //    double thickness = 100 / 304.8;//100mm厚
-                    //    XYZ p1 = lc.GetEndPoint(0)+new XYZ(0,0,1)*thickness;
-                    //    XYZ p2 = lc.GetEndPoint(1)+new XYZ(0,0,1)*thickness;
-                    //    Curve nlc = Line.CreateBound(p1, p2);
-                    //    ml.GeometryCurve = nlc;
-                    //}
+
                 }
                 catch { }
                 //防止板为空
@@ -110,21 +102,23 @@ namespace TemplateCount
                 {
                     //该标高下板的模板集合
                     List<Floor> levFl_List = flList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levFl_List.Count!=0)
+                    if (levFl_List.Count != 0)
                     {
                         TpCount levFlTC = new TpCount(levFl_List, TpCount.TypeName.板模板, lev, out List<TpAmount> levFlTpa);
                         flTpa_List.AddRange(levFlTpa);
+                        TpCount levFlCTC = new TpCount(doc, levFl_List, TpCount.TypeName.板砼工程量, out List<TpAmount> levFlCTpa);
+                        flConcret_List.AddRange(levFlCTpa);
                     }
-                    
+
                 }
                 catch { }
                 //防止柱子为空
                 try
                 {
                     List<FamilyInstance> levCol_List = columnList.Where(m => m.get_Parameter(BuiltInParameter.SCHEDULE_BASE_LEVEL_PARAM).AsElementId().IntegerValue == lev.Id.IntegerValue).ToList();
-                    if (levCol_List.Count!=0)
+                    if (levCol_List.Count != 0)
                     {
-                        TpCount levColTC = new TpCount(doc, levCol_List, lev, out List<TpAmount> levColTpa);
+                        TpCount levColTC = new TpCount(doc, levCol_List, lev, TpCount.TypeName.柱模板, out List<TpAmount> levColTpa);
                         colTpa_List.AddRange(levColTpa);
                         TpCount levColCTC = new TpCount(doc, levCol_List, TpCount.TypeName.柱砼工程量, out List<TpAmount> levColCTpa);
                         colConcret_List.AddRange(levColCTpa);
@@ -134,7 +128,7 @@ namespace TemplateCount
                 { }
             }
         }
-        
+
         /// <summary>
         /// 返回过滤器元素集合
         /// </summary>
@@ -634,7 +628,7 @@ namespace TemplateCount
                         break;
                     case "ConcretVolumes":
                         str = "混凝土工程量(m3)";
-                            i= 25;
+                        i = 25;
                         break;
                     case "TemplateAmount":
                         str = "模板面积(m2)";
@@ -696,14 +690,14 @@ namespace TemplateCount
         /// <param name="e"></param>
         /// <param name="vdl"></param>
         /// <returns></returns>
-        public List<Solid> AllSolid_Of_Element(Element e, ViewDetailLevel vdl)
+        public List<Solid> AllSolid_Of_Element(Element e)
         {
             List<Solid> solid_list = new List<Solid>();
             try
             {
                 Options options = new Options();
                 options.IncludeNonVisibleObjects = false;
-                options.DetailLevel = vdl;
+                options.DetailLevel = ViewDetailLevel.Fine;
                 options.ComputeReferences = true;
 
                 GeometryElement geoElement = e.get_Geometry(options);
@@ -725,8 +719,8 @@ namespace TemplateCount
                                     if (obj2 is Solid)
                                     {
                                         Solid sd = obj2 as Solid;
-                                        if (sd.Volume>0)
-                                        solid_list.Add(obj2 as Solid);
+                                        if (sd.Volume > 0)
+                                            solid_list.Add(obj2 as Solid);
                                     }
                                 }
                             }
@@ -734,8 +728,8 @@ namespace TemplateCount
                         else if (geoObj is Solid)
                         {
                             Solid sd = geoObj as Solid;
-                            if(sd.Volume>0)
-                            solid_list.Add(geoObj as Solid);
+                            if (sd.Volume > 0)
+                                solid_list.Add(geoObj as Solid);
                         }
                     }
                 }
@@ -744,7 +738,205 @@ namespace TemplateCount
             { }
             return solid_list;
         }
-    }
 
+        public ElementId SurfaceLayerGernerate(Document doc, Face face, DirectShapeType drt, ElementId HostELemID)
+        {
+            DirectShape dsElem = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_Parts), Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
+            XYZ faceNormal = face.ComputeNormal(new UV(0, 0));
+            if (face is CylindricalFace) return null;//如果是圆柱面则排除
+            IList<CurveLoop> faceLoopList = face.GetEdgesAsCurveLoops();
+            Solid sd = GeometryCreationUtilities.CreateExtrusionGeometry(faceLoopList, faceNormal, 5 / 304.8);
+
+            //catch { SWF.MessageBox.Show(HostELemID.IntegerValue + ""); }
+            //对于生成的solid进行预处理
+            sd = SolidHandle(doc, HostELemID, sd);
+            dsElem.SetShape(new List<GeometryObject>() { sd });
+            dsElem.SetTypeId(drt.Id);
+            dsElem.LookupParameter("HostElemID").Set(HostELemID.IntegerValue);
+            dsElem.LookupParameter("模板面积").Set(sd.Volume / (5 / 304.8));
+            Parameter dsParamter = dsElem.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+            try
+            {
+                if (faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
+                {
+                    if (doc.GetElement(HostELemID) is Floor)
+                        dsParamter.Set("楼板底模板");
+                    else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
+                        dsParamter.Set("梁底模板");
+
+                }
+                else
+                {
+                    if (doc.GetElement(HostELemID) is Floor)
+                        dsParamter.Set("楼板侧模板");
+                    else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
+                        dsParamter.Set("梁侧模板");
+                    else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns))
+                        dsParamter.Set("柱侧模板");
+                }
+            }
+            catch (Exception e)
+            {
+                SWF.MessageBox.Show(e.ToString());
+            }
+            dsElem.LookupParameter("X").Set(faceNormal.X);
+            dsElem.LookupParameter("Y").Set(faceNormal.Y);
+            dsElem.LookupParameter("Z").Set(faceNormal.Z);
+            doc.ActiveView.PartsVisibility = PartsVisibility.ShowPartsOnly;
+
+            return dsElem.Id;
+        }
+
+        public Solid SolidHandle(Document doc, ElementId hostELemID, Solid sd)
+        {
+            Element hostElem = doc.GetElement(hostELemID);
+            List<Element> elembeCutList = JoinGeometryUtils.GetJoinedElements(doc, hostElem).Where(m =>
+            {
+                if (JoinGeometryUtils.AreElementsJoined(doc, doc.GetElement(m), hostElem))
+                {
+                    if (JoinGeometryUtils.IsCuttingElementInJoin(doc, hostElem, doc.GetElement(m)))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }).ToList().ConvertAll(m => doc.GetElement(m));
+            //对于与梁进行碰撞的Solid的处理
+            if (hostElem.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
+            {
+                try
+                {
+                    elembeCutList = elembeCutList.Where(m => m.Category
+                       .Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
+                       .ToList();
+                }
+                catch { SWF.MessageBox.Show(hostELemID + ""); }
+
+            }
+            else if (hostElem is Floor)
+            {
+                elembeCutList = elembeCutList.Where(m => m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming) 
+                || m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns)||m.Category.Id==new ElementId(BuiltInCategory.OST_Walls))
+                        .ToList();
+            }
+            Solid lastSolid = sd;
+            foreach (Element e in elembeCutList)
+            {
+                Solid sdcut = AllSolid_Of_Element(e)[0];
+                try
+                {
+                    lastSolid = BooleanOperationsUtils.ExecuteBooleanOperation(lastSolid, sdcut, BooleanOperationsType.Difference);
+                }//可能由于几何体太过复杂导致Bool失败
+                catch { }
+
+            }
+            return lastSolid;
+        }
+
+        /// <summary>
+        /// 创建共享参数
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="app"></param>
+        /// <returns></returns>
+        public bool ShareParameterGenerate(Document doc, Autodesk.Revit.ApplicationServices.Application app)
+        {
+            //设置共享参数
+            string TxtFileName = app.RecordingJournalFilename;
+            Definition IdDf;
+            Definition areaDf;
+            Definition XDf;
+            Definition YDf;
+            Definition ZDf;
+            string sNametmp = TxtFileName.Substring(0, TxtFileName.LastIndexOf("\\")) + "\\Teplate共享参数.txt";
+            if (!File.Exists(sNametmp))
+            {
+                File.WriteAllText(sNametmp, "", Encoding.Default);
+                app.SharedParametersFilename = sNametmp;
+            }
+            try
+            {
+                DefinitionFile dsFile = app.OpenSharedParameterFile();
+                DefinitionGroup dsGroup = dsFile.Groups.ToList().Where(m => m.Name == "模板信息").First();
+                IdDf = dsGroup.Definitions.get_Item("HostElemID");
+                areaDf = dsGroup.Definitions.get_Item("模板面积");
+                XDf = dsGroup.Definitions.get_Item("X");
+                YDf = dsGroup.Definitions.get_Item("Y");
+                ZDf = dsGroup.Definitions.get_Item("Z");
+            }
+            catch
+            {
+                // 判断 路径是否有效，如果为空，读者可以创建一txt文件
+                //将路径赋值给app.SharedParametersFilename
+                DefinitionFile dfile = app.OpenSharedParameterFile();
+                // 创建一个共享参数分组
+                DefinitionGroup dg = dfile.Groups.Create("模板信息");
+
+                // 参数创建的选项，包括参数名字，参数类型，用户是不是可以修改。。
+                ExternalDefinitionCreationOptions elemID = new ExternalDefinitionCreationOptions("HostElemID", ParameterType.Integer);
+                elemID.UserModifiable = false;
+                ExternalDefinitionCreationOptions TemplateArea = new ExternalDefinitionCreationOptions("模板面积", ParameterType.Area);
+                TemplateArea.UserModifiable = false;
+                ExternalDefinitionCreationOptions X = new ExternalDefinitionCreationOptions("X", ParameterType.Number);
+                X.UserModifiable = false;
+                ExternalDefinitionCreationOptions Y = new ExternalDefinitionCreationOptions("Y", ParameterType.Number);
+                Y.UserModifiable = false;
+                ExternalDefinitionCreationOptions Z = new ExternalDefinitionCreationOptions("Z", ParameterType.Number);
+                Z.UserModifiable = false;
+
+                // 创建参数
+                IdDf = dg.Definitions.Create(elemID);
+                areaDf = dg.Definitions.Create(TemplateArea);
+                XDf = dg.Definitions.Create(X);
+                YDf = dg.Definitions.Create(Y);
+                ZDf = dg.Definitions.Create(Z);
+
+            }
+            if (IdDf == null || areaDf == null || YDf == null || XDf == null || ZDf == null)
+            {
+                return false;
+            }
+            // 创建一个Category集合
+
+            CategorySet cateSet = app.Create.NewCategorySet();
+
+            // 获取墙的category
+            Category TemplateCate = Category.GetCategory(doc, BuiltInCategory.OST_Parts);
+
+            // 在Category集合中加入 模板的category
+            bool flag = cateSet.Insert(TemplateCate);
+
+            // 给 这个Category集合中的Category 创建一个实例绑定
+            InstanceBinding TemBd = app.Create.NewInstanceBinding(cateSet);
+            //ElementBinding TemBd = app.Create.NewTypeBinding(cateSet);
+
+            // 获取当前Document的BindingMap
+            BindingMap bmap = doc.ParameterBindings;
+
+            //创建共享参数和Category之间的Binding
+            bmap.Insert(IdDf, TemBd);
+            bmap.Insert(areaDf, TemBd);
+            bmap.Insert(XDf, TemBd);
+            bmap.Insert(YDf, TemBd);
+            bmap.Insert(ZDf, TemBd);
+            //设置视图，打开组成部分
+            doc.ActiveView.PartsVisibility = PartsVisibility.ShowPartsOnly;
+            Material partMat = null;
+            try
+            {
+                partMat = FilterElementList(doc, typeof(Material)).Where(m => m.Name == "模板材质").First() as Material;
+            }
+            catch
+            {
+                partMat = doc.GetElement(Material.Create(doc, "模板材质")) as Material;
+                partMat.Color = new Color(255, 0, 0);
+            }
+            doc.Settings.Categories.get_Item(BuiltInCategory.OST_Parts).Material = partMat;
+            return true;
+        }
+
+    }
 }
+
+
 

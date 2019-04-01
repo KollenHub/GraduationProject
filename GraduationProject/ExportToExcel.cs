@@ -83,6 +83,7 @@ namespace TemplateCount
                                 partAmount += l.TemplateAmount * l.TemplateNum;
                             else partAmount += l.ConcretVolumes;
                             time++;
+                            
                         }
                         else//到某一行不是同一个构件时
                         {
@@ -103,6 +104,7 @@ namespace TemplateCount
                                 partAmount = l.ConcretVolumes;
                             time = 0;
                         }
+                       
                         //总计在最后一次时要加partAmount
                         if (n==tpaList.Count-1)
                             allAmount += partAmount;
@@ -126,6 +128,16 @@ namespace TemplateCount
                             }
                             //自动调整行高
                             worksheet.Row(row).CustomHeight = true;
+                        }
+                        if (n == tpaList.Count - 1)//最后一个合计
+                        {
+                            row++;
+                            worksheet.Cells[row, fieldsList.Count - 1].Value = partAmount;
+                            worksheet.Cells[row, 1].Value = "合计";
+                            if (worksheet.Name.Contains("模板"))
+                                worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                            else
+                                worksheet.Cells[row, fieldsList.Count].Value = "立方米";
                         }
                         row++;
                     }

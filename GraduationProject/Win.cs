@@ -38,6 +38,11 @@ namespace TemplateCount
         private void Win_Loaded(object sender, RoutedEventArgs e)
         {
             chbB.IsChecked = true;
+            chbC.IsChecked = true;
+            chbF.IsChecked = true;
+            chbBc.IsChecked = true;
+            chbFc.IsChecked = true;
+            chbCc.IsChecked = true;
             BasisCode bc = new BasisCode();
             List<Level> levList = bc.GetLevList(uiDoc.Document);
             fstCmb.ItemsSource = levList.ConvertAll(m => m.Name);
@@ -83,16 +88,16 @@ namespace TemplateCount
                     foreach (string str in ssp)
                     {
                         char[] scha =str.ToCharArray();
-                        if (scha.Contains('-'))
+                        if (scha.Contains('-'))//如果是相连着的
                         {
                             string cstr = null;
                             foreach (Char c in scha)
                             {
                                 cstr += c;
                             }
-                            string[] cssp = cstr.Split(new char[] { '-' });
-                            int i1 = Convert.ToInt32(cssp[0]);
-                            int i2 = Convert.ToInt32(cssp[1]);
+                            string[] cssp = cstr.Split(new char[] { '-' });//将其重新组装
+                            int i1 = Convert.ToInt32(cssp[0]);//初始楼层
+                            int i2 = Convert.ToInt32(cssp[1]);//末尾楼层
                             for (int i = i1; i <= i2; i++)
                             {
                                 cflNum.Add(i);
@@ -100,10 +105,11 @@ namespace TemplateCount
                         }
                         else
                         {
-                            bflNum.Add(Convert.ToInt32(str));
+                            bflNum.Add(Convert.ToInt32(str));//单层的楼层编号
                         }
 
                     }
+                    //对这两种标高进行比较，得出最终的标高
                     foreach (int i in cflNum)
                     {
                         if (flNum.Count == 0 || flNum.Where(m => m == i).Count() == 0)
@@ -120,12 +126,12 @@ namespace TemplateCount
                     }
                     levList = flNum;
                 }
-                string st = null;
-                foreach (int lev in levList)
-                {
-                    st += lev.ToString() + "\r\n";
-                }
-                MessageBox.Show(st, "楼层数", MessageBoxButton.OK);
+                //string st = null;
+                //foreach (int lev in levList)
+                //{
+                //    st += lev.ToString() + "\r\n";
+                //}
+                //MessageBox.Show(st, "楼层数", MessageBoxButton.OK);
                 p =1;
             }
             catch

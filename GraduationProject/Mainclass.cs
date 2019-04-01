@@ -26,11 +26,15 @@ namespace TemplateCount
                 judge = win.p;
                 if (judge == 1)
                 {
-                    
-
                     List<List<TpAmount>> tpAList_List = new List<List<TpAmount>>();
                     //项目标高集合
-                    List<Level> lev_List = bc.GetLevList(doc);
+                    List<int> levIndexList =new List<int>();
+                    foreach (int i in win.levList)
+                    {
+                        if (i >= 0 && i <= bc.GetLevList(doc).Count) levIndexList.Add(i);
+                    }
+                    List<Level> lev_List = levIndexList.ConvertAll(m=>bc.GetLevList(doc).ElementAt(m-1));
+                    
                     //梁模板集合
                     List<TpAmount> beamTpa_List = new List<TpAmount>();
                     //板模板集合
@@ -45,9 +49,9 @@ namespace TemplateCount
                     List<TpAmount> flConcret_List = new List<TpAmount>();
                     //获取所有构件分别对应的模板集合
                     bc.AllELmentList(doc, lev_List, out beamTpa_List, out flTpa_List, out colTpa_List, out beamConcret_List, out colConcret_List, out flConcret_List);
-                    //try
-                    //{
-                    List<string> strList = win.chbStrList;
+                    try
+                    {
+                        List<string> strList = win.chbStrList;
                     foreach (string str in strList)
                     {
                         switch (str)
@@ -68,6 +72,7 @@ namespace TemplateCount
                                 tpAList_List.Add(colConcret_List);
                                 break;
                             case "板混凝土量":
+                                tpAList_List.Add(flConcret_List);
                                 break;
 
                             default:
@@ -75,14 +80,14 @@ namespace TemplateCount
                         }
                     }
                     ExportToExcel worsheet = new ExportToExcel(tpAList_List);
-                    //}
-                    //catch
-                    //{
-                    //    judge = 0;
-                    //}
                 }
+                    catch
+                {
+                    judge = 0;
+                }
+            }
             } while (judge == 0);
-
+            TaskDialog.Show("提示", "表格导出完成", TaskDialogCommonButtons.Yes);
             return Result.Succeeded;
 
         }
