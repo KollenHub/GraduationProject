@@ -14,7 +14,7 @@ namespace TemplateCount
 {
     public class ExportToExcel
     {
-        public ExportToExcel(List<List<ProjectAmount>> list_List)
+        public ExportToExcel(List<List<List<ProjectAmount>>> pAListList_List)
         {
             //保存文件
             SaveFileDialog sfd = new SaveFileDialog();
@@ -49,15 +49,16 @@ namespace TemplateCount
             {
                 //
                 int i = 0;
-                ExcelWorksheet[] sheetList = new ExcelWorksheet[list_List.Count];
-                foreach (List<ProjectAmount> tpaList in list_List)
+                ExcelWorksheet[] sheetList = new ExcelWorksheet[pAListList_List.Count];
+                foreach (List<List<ProjectAmount>> tpaListList in pAListList_List)
                 {
                     //第一个文档
-                    ProjectAmount tpa = tpaList.First();
+                    ProjectAmount tpa = tpaListList[0][0];
                     //取得算量模板的属性
-                    List<string> fieldsList = TpAFiieldTxt(tpa);
-                    //转换后的属性名称
+                    List<string> fieldsList = FiieldTxt(tpa);
+                    //转换后的属性表格宽度
                     List<int> columnSizeList = new List<int>();
+                    //转换后的属性名称
                     List<string> proNameList = bc.ProTransform(fieldsList, out columnSizeList);
                     //将工作表的名字命名为该种构件的名称
                     sheetList[i] = package.Workbook.Worksheets.Add(tpa.TypeName);
@@ -65,120 +66,114 @@ namespace TemplateCount
                     ExcelWorksheet worksheet = sheetList[i];
                     //从第二行开始
                     int row = 2;
-                    //每个构件的模板合计数量
-                    double partAmount = 0;
-                    //总计的模板数量
+                    //总计的工程量数量
                     double allAmount = 0;
-                    //存储相同的构件出现的次数
-                    int time = 0;
-                    //排列某个工作表
-                    foreach (ProjectAmount l in tpaList)
+                    //表格标题行初始化设置
+                    foreach (string str in fieldsList)
                     {
-                        int n = tpaList.IndexOf(l);
-                        //如果是相同的构件则把模板量加起来
-                        if (n == 0 || l.ElemId == tpaList[n - 1].ElemId)
+                        //第一行标题字段的对应文字
+                        worksheet.Cells[1, fieldsList.IndexOf(str) + 1].Value = proNameList.ElementAt(fieldsList.IndexOf(str));
+                        worksheet.Column(fieldsList.IndexOf(str) + 1).Width = columnSizeList.ElementAt(fieldsList.IndexOf(str));
+                    }
+                    //加一列合计
+                    worksheet.Cells[1, fieldsList.Count + 1].Value = "合计(m2)";
+                    worksheet.Column(fieldsList.Count + 1).Width = 15;
+                    //排列某个工作表
+                    foreach (List<ProjectAmount> tpList in tpaListList)
+                    {
+                        //合计的数据
+                        double componetTotal = 0;
+                        int rowlast = row;
+                        //按行填数据
+                        foreach (ProjectAmount tp in tpList)
                         {
-                            if (l.TemplateNum != 0)
-                                partAmount += l.TemplateAmount * l.TemplateNum;
-                            else partAmount += l.ConcretVolumes;
-                            time++;
-                            
-                        }
-                        else//到某一行不是同一个构件时
-                        {
-                            if (time > 1)
+                            //按列填数据
+                            for (int col = 1; col < fieldsList.Count + 1; col++)
                             {
-                                worksheet.Cells[row, fieldsList.Count - 1].Value = partAmount;
-                                worksheet.Cells[row, 1].Value = "合计";
-                                if (worksheet.Name.Contains("模板"))
-                                    worksheet.Cells[row, fieldsList.Count].Value = "平方米";
-                                else
-                                    worksheet.Cells[row, fieldsList.Count].Value = "立方米";
-                                row++;
+                                //获得属性集合
+                                PropertyInfo[] pinfo = tp.GetType().GetProperties();
+                                //获得对应属性的值
+                                try
+                                {
+                                    PropertyInfo pi = pinfo.First(m => m.Name == fieldsList[col - 1]);
+                                    //如果该值不为空，则该空填入该值
+                                    if (pi != null)
+                                        worksheet.Cells[row, col].Value = pi.GetValue(tp);
+                                }
+                                catch { }
+                                //自动调整行高
+                                worksheet.Row(row).CustomHeight = true;
                             }
-                            allAmount += partAmount;
-                            if (l.TemplateNum != 0)
-                                partAmount = l.TemplateAmount * l.TemplateNum;
+                            if (tpa.TypeName.Contains("模板"))
+                                componetTotal += tp.TemplateAmount;
                             else
-                                partAmount = l.ConcretVolumes;
-                            time = 0;
-                        }
-                       
-                        //总计在最后一次时要加partAmount
-                        if (n==tpaList.Count-1)
-                            allAmount += partAmount;
-                        //按照从属性的顺序一行一行的填数据
-                        foreach (string str in fieldsList)
-                        {
-                            if (row == 2)
-                            {
-                                //第一行标题字段的对应文字
-                                worksheet.Cells[1, fieldsList.IndexOf(str) + 1].Value = proNameList.ElementAt(fieldsList.IndexOf(str));
-                                worksheet.Column(fieldsList.IndexOf(str) + 1).Width = columnSizeList.ElementAt(fieldsList.IndexOf(str));
-                            }
-                            //获得属性集合
-                            PropertyInfo[] pinfo = l.GetType().GetProperties();
-                            //获得对应属性的值
-                            PropertyInfo pi = pinfo.First(m => m.Name == str);
-                            //如果该值不为空，则该空填入该值
-                            if (pi != null)
-                            {
-                                worksheet.Cells[row, fieldsList.IndexOf(str) + 1].Value = pi.GetValue(l);
-                            }
-                            //自动调整行高
-                            worksheet.Row(row).CustomHeight = true;
-                        }
-                        if (n == tpaList.Count - 1)//最后一个合计
-                        {
+                                componetTotal += tp.ConcretVolumes;
                             row++;
-                            worksheet.Cells[row, fieldsList.Count - 1].Value = partAmount;
-                            worksheet.Cells[row, 1].Value = "合计";
-                            if (worksheet.Name.Contains("模板"))
-                                worksheet.Cells[row, fieldsList.Count].Value = "平方米";
-                            else
-                                worksheet.Cells[row, fieldsList.Count].Value = "立方米";
                         }
-                        row++;
+                        worksheet.Cells[rowlast, fieldsList.Count + 1].Value = componetTotal;
+                        allAmount += componetTotal;
+                        //TODO：如果只有一块，不知合并是否会报错
+                        if (row - rowlast - 1 > 0)
+                        {
+                            if (tpa.TypeName.Contains("模板"))
+                            {
+                                //第几行开始为模板数据
+                                int tpColNum = fieldsList.IndexOf("TpId");
+                                //将其它列进行合并
+
+                                for (int num = 1; num < tpColNum + 1; num++)
+                                {
+                                    worksheet.Cells[rowlast, num, row - 1, num].Merge = true;
+                                }
+                            }
+
+                            else//混凝土不知是否有需要
+                            {
+
+                            }
+                            worksheet.Cells[rowlast, fieldsList.Count + 1, row-1, fieldsList.Count + 1].Merge = true;
+                        }
+
                     }
                     i++;
-
                     worksheet.Cells[row, 1].Value = "总计";
                     if (worksheet.Name.Contains("模板"))
                     {
-                        worksheet.Cells[row, fieldsList.Count - 1].Value = allAmount;
-                        worksheet.Cells[row, fieldsList.Count].Value = "平方米";
+                        worksheet.Cells[row, fieldsList.Count +1].Value = allAmount;
+                        worksheet.Cells[row, fieldsList.Count+2].Value = "平方米";
                     }
                     else
                     {
-                        worksheet.Cells[row, fieldsList.Count].Value = allAmount;
-                        worksheet.Cells[row, fieldsList.Count + 1].Value = "立方米";
+                        worksheet.Cells[row, fieldsList.Count+1].Value = allAmount;
+                        worksheet.Cells[row, fieldsList.Count + 2].Value = "立方米";
                     }
-                    row = row + 2;
-                    if (worksheet.Name.Contains("工程量"))
-                    {
-                        worksheet.Cells[row, 1].Value = "混凝土等级";
-                        worksheet.Cells[row, 2].Value = "总量";
-                        worksheet.Cells[row, 3].Value = "单位";
-                        row++;
-                        List<string> materiaTypes = new List<string>();
-                        for (int j = 0; j < tpaList.Count; j++)
-                        {
-                            ProjectAmount tp = tpaList[j];
-                            if (materiaTypes.Count == 0 || materiaTypes.Where(m => m == tp.MaterialName).Count() == 0)
-                                materiaTypes.Add(tp.MaterialName);
-                        }
-                        foreach (string materia in materiaTypes)
-                        {
-                            int index = materiaTypes.IndexOf(materia);
-                            double num = 0;
-                            tpaList.Where(m => m.MaterialName == materia).ToList().ConvertAll(m => num += m.ConcretVolumes);
-                            worksheet.Cells[row, 1].Value = materia;
-                            worksheet.Cells[row, 2].Value = bc.TRF(num, 3);
-                            worksheet.Cells[row, 3].Value = "立方米";
-                            row++;
-                        }
+                    //row = row + 2;
+                    //if (worksheet.Name.Contains("工程量"))
+                    //{
+                    //    worksheet.Cells[row, 1].Value = "混凝土等级";
+                    //    worksheet.Cells[row, 2].Value = "总量";
+                    //    worksheet.Cells[row, 3].Value = "单位";
+                    //    row++;
+                    //    List<string> materiaTypes = new List<string>();
+                    //    for (int j = 0; j < tpaListList.Count; j++)
+                    //    {
+                    //        ProjectAmount tp = tpaListList[j];
+                    //        if (materiaTypes.Count == 0 || materiaTypes.Where(m => m == tp.MaterialName).Count() == 0)
+                    //            materiaTypes.Add(tp.MaterialName);
+                    //    }
+                    //    foreach (string materia in materiaTypes)
+                    //    {
+                    //        int index = materiaTypes.IndexOf(materia);
+                    //        double num = 0;
+                    //        tpaListList.Where(m => m.MaterialName == materia).ToList().ConvertAll(m => num += m.ConcretVolumes);
+                    //        worksheet.Cells[row, 1].Value = materia;
+                    //        worksheet.Cells[row, 2].Value = bc.TRF(num, 3);
+                    //        worksheet.Cells[row, 3].Value = "立方米";
+                    //        row++;
+                    //    }
 
-                    }
+                    //}
+
                     //设置字体，也可以是中文，比如：宋体
                     worksheet.Cells.Style.Font.Name = "宋体";
                     //字体加粗
@@ -206,10 +201,10 @@ namespace TemplateCount
                         worksheet.Column(k + 1).Width = columnSizeList[k];
                     }
 
-                    for (int p = 1; p < row + 1; p++)
+                    for (int p = 1; p < row+1; p++)
                     {
                         worksheet.Row(p).Height = 20;
-                        for (int l = 1; l < columnSizeList.Count + 1; l++)
+                        for (int l = 1; l < columnSizeList.Count + 2; l++)
                         {
                             worksheet.Cells[p, l].Style.Border.BorderAround(ExcelBorderStyle.Thin, Color.FromArgb(191, 191, 191));//设置单元格所有边框
                         }
@@ -220,7 +215,7 @@ namespace TemplateCount
 
         }
 
-        private List<string> TpAFiieldTxt(ProjectAmount l)
+        private List<string> FiieldTxt(ProjectAmount l)
         {
 
             Type tpaTp = l.GetType();
@@ -248,6 +243,7 @@ namespace TemplateCount
             }
             return fieldList;
         }
+
 
     }
 }

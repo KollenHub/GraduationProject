@@ -22,6 +22,9 @@ namespace TemplateCount
             Document doc = uidoc.Document;
             DefinitionFile ds = app.OpenSharedParameterFile();
             DirectShapeType dst = null;
+            TpWin Tpwin = new TpWin();
+            if (Tpwin.ShowDialog() == false) return Result.Succeeded;
+            List<string> checkOpt = Tpwin.chbStrList;
             using (TransactionGroup transGroup = new TransactionGroup(doc, "模板创建"))
             {
                 if (transGroup.Start() == TransactionStatus.Started)
@@ -31,23 +34,26 @@ namespace TemplateCount
                     bool b = bc.ShareParameterGenerate(doc, app);
                     transShare.Commit();
                     if (b == false) transGroup.RollBack();
-                    if (bc.FilterElementList<DirectShape>(doc).Where(m => m.Name == "模板").Count() == 0)
+                    if (bc.FilterElementList<DirectShapeType>(doc).Where(m => m.Name == "模板").Count() == 0)
                     {
                         Transaction transCreat = new Transaction(doc, "创建类型");
                         transCreat.Start();
                         dst = DirectShapeType.Create(doc, "模板", new ElementId(BuiltInCategory.OST_Parts));
                         transCreat.Commit();
                     }
-                    else dst = bc.FilterElementList<DirectShape>(doc).Where(m => m.Name == "模板").First() as DirectShapeType;
+                    else dst = bc.FilterElementList<DirectShapeType>(doc).Where(m => m.Name == "模板").First() as DirectShapeType;
                     List<Floor> floorList = bc.FilterElementList<Floor>(doc).ConvertAll(m => m as Floor);
                     List<Element> beamList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralFraming);
                     List<Element> colList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns);
-
+                    List<Element> walList = bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).Where(m => m.Name.Contains("DW")).Count()>0? 
+                        bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).Where(m => m.Name.Contains("DW")).ToList():new List<Element>();
                     string failureElemIds = null;
                     Transaction trans = new Transaction(doc, "创建模板");
                     trans.Start();
+                    //楼板
                     foreach (Floor fl in floorList)
                     {
+                        if(!checkOpt.Contains("板模板"))break;
                         List<Solid> ElemSolidList = bc.AllSolid_Of_Element(fl);
                         foreach (Solid sd in ElemSolidList)
                         {
@@ -56,19 +62,30 @@ namespace TemplateCount
 
                                 if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(-XYZ.BasisZ))
                                 {
-                                    //try
-                                    //{
+                                    try
+                                    {
                                         bc.SurfaceLayerGernerate(doc, face, dst, fl.Id);
-                                    //}
-                                    //catch { failureElemIds += fl.Id.IntegerValue + "\r\n"; }
+                                    }
+                                    catch { failureElemIds += fl.Id.IntegerValue + "\r\n"; }
                                 }
                             }
                         }
                     }
+                    //梁模板
                     foreach (FamilyInstance bInstance in beamList)
                     {
-                        IList<Solid> beamSolidList = bc.AllSolid_Of_Element(bInstance);
-                        Curve locationCurve = (bInstance.Location as LocationCurve).Curve;
+                        if (!checkOpt.Contains("梁模板")) break;
+                       
+                    IList<Solid> beamSolidList = bc.AllSolid_Of_Element(bInstance);
+                        Curve locationCurve = null;
+                        try
+                        {
+                            locationCurve = (bInstance.Location as LocationCurve).Curve;
+                        }
+                        catch
+                        {
+                            failureElemIds +="轴线出错" +bInstance.Id.IntegerValue + "\r\n";
+                        }
                         foreach (Solid sd in beamSolidList)
                         {
                             foreach (Face bface in sd.Faces)
@@ -85,17 +102,19 @@ namespace TemplateCount
                                         isGenerate = true;
                                     else if (faceNormal.IsAlmostEqualTo(sideNormal) || faceNormal.IsAlmostEqualTo(-sideNormal))
                                         isGenerate = true;
-                                    //try
-                                    //{
-                                    bc.SurfaceLayerGernerate(doc, bface, dst, bInstance.Id);
-                                    //}
-                                    //catch { failureElemIds += bInstance.Id.IntegerValue + "\r\n"; }
+                                    try
+                                    {
+                                        bc.SurfaceLayerGernerate(doc, bface, dst, bInstance.Id);
+                                    }
+                                    catch { failureElemIds += bInstance.Id.IntegerValue + "\r\n"; }
                                 }
                             }
                         }
                     }
+                    //柱模板
                     foreach (FamilyInstance colInstance in colList)
                     {
+                        if (!checkOpt.Contains("柱模板")) break;
                         IList<Solid> colSolidList = bc.AllSolid_Of_Element(colInstance);
                         foreach (Solid sd in colSolidList)
                         {
@@ -104,11 +123,50 @@ namespace TemplateCount
                                 XYZ faceNormal = cface.ComputeNormal(new UV(0, 0));
                                 if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ) || faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
                                     continue;
-                                //try
-                                //{
+                                try
+                                {
                                     bc.SurfaceLayerGernerate(doc, cface, dst, colInstance.Id);
-                                //}
-                                //catch { failureElemIds += colInstance.Id.IntegerValue + "\r\n"; }
+                                }
+                                catch { failureElemIds += colInstance.Id.IntegerValue + "\r\n"; }
+                            }
+                        }
+                    }
+                    //墙模板
+                    foreach (Wall wal in walList)
+                    {
+                       
+                        if (!checkOpt.Contains("墙模板")) break;
+                        IList<Solid> walSolidList = bc.AllSolid_Of_Element(wal);
+                        //3维视图
+                        foreach (Solid sd in walSolidList)
+                        {
+                            List<Face> faceList = sd.Faces.Cast<Face>().ToList();
+                            //获取高度最小值
+                            double walBottom =double.MaxValue;
+                            double walHeight = double.MinValue;
+                            faceList.ConvertAll(m =>
+                            {
+                                BoundingBoxUV bdxyz = m.GetBoundingBox();
+                                XYZ min = m.Evaluate(bdxyz.Min);
+                                XYZ max = m.Evaluate(bdxyz.Max);
+                                double minV = min.Z < max.Z ? min.Z : max.Z;
+                                double maxV = min.Z > max.Z ? min.Z : max.Z;
+                                walBottom = walBottom < minV ? walBottom : minV;
+                                walHeight = walHeight > maxV ? walHeight : maxV;
+                                return true;
+                            });
+                            
+                            foreach (Face wface in sd.Faces)
+                            {
+                                XYZ wfaceNormal = wface.ComputeNormal(new UV(0, 0));
+                                double faceElvation = wface.Evaluate(new UV(0, 0)).Z;
+                                if (wfaceNormal.IsAlmostEqualTo(XYZ.BasisZ) && (walHeight - faceElvation) * 304.8 < 10) continue;
+                                if (wfaceNormal.IsAlmostEqualTo(-XYZ.BasisZ) && (faceElvation - walBottom) * 304.8 < 10) continue;
+                                try
+                                {
+                                    bc.SurfaceLayerGernerate(doc, wface, dst, wal.Id);
+                                }
+                                catch { failureElemIds += wal.Id.IntegerValue + "\r\n"; }
                             }
                         }
                     }

@@ -14,6 +14,23 @@ namespace TemplateCount
 {
     public static class BasisCode
     {
+        //定义不同构件属性的枚举
+        public enum TypeName
+        {
+            板模板 = 0,
+            梁模板 = 1,
+            柱模板 = 2,
+            墙模板 = 3,
+            楼梯模板 = 4,
+            基础模板 = 5,
+            梁砼工程量 = 6,
+            板砼工程量 = 7,
+            柱砼工程量 = 8,
+            墙砼工程量 = 9,
+            楼梯砼工程量 = 10,
+            基础砼工程量 = 11,
+
+        }
         /// <summary>
         /// 返回项目中按照高程从小到大排列后的标高集合
         /// </summary>
@@ -32,10 +49,25 @@ namespace TemplateCount
         /// <param name="ty">查找的元素类型</param>
         /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
         /// <returns></returns>
-        public static List<Element> FilterElementList<T>(Document doc, BuiltInCategory bIC)where T:class
+        public static List<Element> FilterElementList<T>(Document doc, BuiltInCategory bIC,Level lev=null)where T:class
         {
             List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).OfCategory(bIC).ToList();
+            if (lev!=null)
+            {
+                try
+                {
+                    if (elemList[0].Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming)
+                        elemList = elemList.Where(m => (m as FamilyInstance).Host!=null&&(m as FamilyInstance).Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
+                    else
+                        elemList = elemList.Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
+                }
+                catch
+                {
+                    return new List<Element>();
+                }
+            }
             return elemList;
+
         }
         /// <summary>
         /// 返回过滤器元素集合
@@ -315,34 +347,7 @@ namespace TemplateCount
             double h = area / c;
             return h;
         }
-        /// <summary>
-        /// 得到剪切梁与综合梁的板扣减面积
-        /// </summary>
-        /// <param name="bfi">梁实例</param>
-        /// <param name="doc"> 项目文旦</param>
-        /// <returns></returns>
-        public static List<ProjectAmount> CutByFloorAmount(FamilyInstance bfi, Document doc)
-        {
-            List<ProjectAmount> tpamount_List = new List<ProjectAmount>();
-            List<Floor> bfiFl_List = JoinGeometryUtils.GetJoinedElements(doc, bfi).Where(m => doc.GetElement(m) is Floor).ToList()
-                .ConvertAll(m => doc.GetElement(m) as Floor);
-            Level lev = bfi.Host as Level;
-            string bfiMt = bfi.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
-            foreach (Floor bfl in bfiFl_List)
-            {
-                FloorType fltp = bfl.FloorType;
-                string flMt = fltp.get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString();
-                if (flMt == bfiMt) continue;
-                double h = fltp.LookupParameter("默认的厚度").AsDouble();
-                double flCutBeamArea = GetFlCutBeamArea(bfi, bfl);
-                double sfArea = EAToCA(flCutBeamArea);
-                double length = flCutBeamArea / h;
-                string bh = BAndH(length, h);
-                ProjectAmount tpa = new ProjectAmount(bfi, lev, ProjectCountCommand.TypeName.梁模板, "-", bh, -sfArea, 1);
-                tpamount_List.Add(tpa);
-            }
-            return tpamount_List;
-        }
+        
 
         /// <summary>
         /// 转换面积（中转英）
@@ -539,6 +544,10 @@ namespace TemplateCount
                         str = "构件ID";
                         i = 15;
                         break;
+                    case "TpId":
+                        str = "模板ID";
+                            i = 15;
+                        break;
                     case "TemplateSize":
                         str = "模板尺寸";
                         i = 25;
@@ -554,10 +563,6 @@ namespace TemplateCount
                     case "TemplateAmount":
                         str = "模板面积(m2)";
                         i = 25;
-                        break;
-                    case "TemplateNum":
-                        str = "模板个数";
-                        i = 15;
                         break;
                     case "MaterialName":
                         str = "混凝土等级";
@@ -667,10 +672,23 @@ namespace TemplateCount
             if (face is CylindricalFace) return null;//如果是圆柱面则排除
             IList<CurveLoop> faceLoopList = face.GetEdgesAsCurveLoops();
             Solid sd = GeometryCreationUtilities.CreateExtrusionGeometry(faceLoopList, faceNormal, 5 / 304.8);
-
+            //模板尺寸判断，矩形标尺寸，非矩形不标
+            string tpSize = null;
+            double last = sd.Volume;
             //catch { SWF.MessageBox.Show(HostELemID.IntegerValue + ""); }
             //对于生成的solid进行预处理
             sd = SolidHandle(doc, HostELemID, sd);
+            double now = sd.Volume;
+            if (last == now)
+            {
+                if (faceLoopList.Count == 1)
+                {
+                    List<Curve> curveList = faceLoopList[0].ToList();
+                    tpSize = bc.RectTangleSize(curveList);
+                }
+                else tpSize = "非矩形板";
+            }
+            else tpSize = "非矩形板";
             dsElem.SetShape(new List<GeometryObject>() { sd });
             dsElem.SetTypeId(drt.Id);
             dsElem.LookupParameter("HostElemID").Set(HostELemID.IntegerValue);
@@ -700,12 +718,37 @@ namespace TemplateCount
             {
                 SWF.MessageBox.Show(e.ToString());
             }
+            dsElem.LookupParameter("模板尺寸").Set(tpSize);
             dsElem.LookupParameter("X").Set(faceNormal.X);
             dsElem.LookupParameter("Y").Set(faceNormal.Y);
             dsElem.LookupParameter("Z").Set(faceNormal.Z);
             doc.ActiveView.PartsVisibility = PartsVisibility.ShowPartsOnly;
 
             return dsElem.Id;
+        }
+        /// <summary>
+        /// 判断是否是矩形
+        /// </summary>
+        /// <param name="curveList"></param>
+        /// <returns></returns>
+
+        public static string RectTangleSize(List<Curve> curveList)
+        {
+            if (curveList.Count != 4) return "非矩形板";
+            List<XYZ> xyzList = curveList.ConvertAll(m => m.GetEndPoint(0));
+            XYZ center = XYZ.Zero;
+            xyzList.ConvertAll(m => center += m);
+            center = center / 4;
+            double d = double.MaxValue;
+            foreach (XYZ xyz in xyzList)
+            {
+                if (d == double.MaxValue)
+                    d = bc.TRF(center.DistanceTo(xyz));
+                else if (d != bc.TRF(xyz.DistanceTo(center)))
+                    return "非矩形板";
+            }
+            string size = bc.TRF(xyzList[0].DistanceTo(xyzList[1]) * 304.8, 0).ToString() + "mm x" + bc.TRF(xyzList[1].DistanceTo(xyzList[2]) * 304.8, 0).ToString() + "mm";
+            return size;
         }
 
         public static Solid SolidHandle(Document doc, ElementId hostELemID, Solid sd)
@@ -740,6 +783,14 @@ namespace TemplateCount
                 || m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns)||m.Category.Id==new ElementId(BuiltInCategory.OST_Walls))
                         .ToList();
             }
+            else if (hostElem.Category.Id.IntegerValue==(int)BuiltInCategory.OST_StructuralColumns)
+            {
+                elembeCutList = elembeCutList.Where(m => m is Wall && m.Name.Contains("DW")).ToList();
+            }
+            else if (hostElem is Wall)
+            {
+                elembeCutList = elembeCutList.Where(m => m.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns).ToList();
+            }
             Solid lastSolid = sd;
             foreach (Element e in elembeCutList)
             {
@@ -766,6 +817,7 @@ namespace TemplateCount
             string TxtFileName = app.RecordingJournalFilename;
             Definition IdDf;
             Definition areaDf;
+            Definition sizeDf;
             Definition XDf;
             Definition YDf;
             Definition ZDf;
@@ -781,6 +833,7 @@ namespace TemplateCount
                 DefinitionGroup dsGroup = dsFile.Groups.ToList().Where(m => m.Name == "模板信息").First();
                 IdDf = dsGroup.Definitions.get_Item("HostElemID");
                 areaDf = dsGroup.Definitions.get_Item("模板面积");
+                sizeDf = dsGroup.Definitions.get_Item("模板尺寸");
                 XDf = dsGroup.Definitions.get_Item("X");
                 YDf = dsGroup.Definitions.get_Item("Y");
                 ZDf = dsGroup.Definitions.get_Item("Z");
@@ -798,6 +851,8 @@ namespace TemplateCount
                 elemID.UserModifiable = false;
                 ExternalDefinitionCreationOptions TemplateArea = new ExternalDefinitionCreationOptions("模板面积", ParameterType.Area);
                 TemplateArea.UserModifiable = false;
+                ExternalDefinitionCreationOptions TemplateSize = new ExternalDefinitionCreationOptions("模板尺寸", ParameterType.Text);
+                TemplateSize.UserModifiable = false;
                 ExternalDefinitionCreationOptions X = new ExternalDefinitionCreationOptions("X", ParameterType.Number);
                 X.UserModifiable = false;
                 ExternalDefinitionCreationOptions Y = new ExternalDefinitionCreationOptions("Y", ParameterType.Number);
@@ -808,12 +863,13 @@ namespace TemplateCount
                 // 创建参数
                 IdDf = dg.Definitions.Create(elemID);
                 areaDf = dg.Definitions.Create(TemplateArea);
+                sizeDf = dg.Definitions.Create(TemplateSize);
                 XDf = dg.Definitions.Create(X);
                 YDf = dg.Definitions.Create(Y);
                 ZDf = dg.Definitions.Create(Z);
 
             }
-            if (IdDf == null || areaDf == null || YDf == null || XDf == null || ZDf == null)
+            if (IdDf == null || areaDf == null || YDf == null || XDf == null || ZDf == null || sizeDf == null)
             {
                 return false;
             }
@@ -837,6 +893,7 @@ namespace TemplateCount
             //创建共享参数和Category之间的Binding
             bmap.Insert(IdDf, TemBd);
             bmap.Insert(areaDf, TemBd);
+            bmap.Insert(sizeDf, TemBd);
             bmap.Insert(XDf, TemBd);
             bmap.Insert(YDf, TemBd);
             bmap.Insert(ZDf, TemBd);

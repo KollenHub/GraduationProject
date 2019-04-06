@@ -1,7 +1,7 @@
 ﻿<Window x:Class="TemplateCount.Win"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="毕业设计" Height="300" Width="280"  Name="dignWin" Closed="dignWin_Closed" >
+        Title="毕业设计" Height="300" Width="300"  Name="dignWin" Closed="DignWin_Closed" >
     <Grid Margin="5">
         <Grid.ColumnDefinitions>
             <ColumnDefinition></ColumnDefinition>
@@ -13,6 +13,8 @@
             <RowDefinition Height="20"></RowDefinition>
             <RowDefinition></RowDefinition>
             <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
+            <RowDefinition></RowDefinition>
             <RowDefinition Height="40"></RowDefinition>
             <RowDefinition></RowDefinition>
             <RowDefinition Height="40"></RowDefinition>
@@ -20,16 +22,26 @@
         </Grid.RowDefinitions>
         <TextBlock Text="土建工程量计算" Grid.ColumnSpan="3" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="16" Foreground="SkyBlue"></TextBlock>
         <TextBlock Text="计算部分选择:" Grid.Row="1" VerticalAlignment="Bottom" Foreground="DodgerBlue"></TextBlock>
-        <TextBlock  Text="导出楼层:" Grid.Row="4" VerticalAlignment="Center" Foreground="DodgerBlue"></TextBlock>
-        <TextBox Name="sTxtb" ToolTip="连续用-连接,隔开用,连接,全部则为all" FontSize="14" Grid.Row="4" Grid.ColumnSpan="3" Height="25" Width="200" HorizontalAlignment="Right" Text="1-3,4,5" VerticalAlignment="Center" Foreground="Gray"></TextBox>
+        <TextBlock  Text="导出楼层:" Grid.Row="6" VerticalAlignment="Center" Foreground="DodgerBlue" ></TextBlock>
+        <TextBox Name="sTxtb" ToolTip="连续用-连接,隔开用,连接,全部则为all,楼层按照标高进行排序最低标高为1" FontSize="14" Grid.Row="6" Grid.ColumnSpan="3" Height="25" Width="200" HorizontalAlignment="Right" Text="1-3,4,5,all" VerticalAlignment="Center" Foreground="Gray" Margin="0,0,20,0"></TextBox>
         <CheckBox Content="梁模板" VerticalAlignment="Center" Grid.Row="2" Name="chbB"/>
         <CheckBox Content="柱模板" VerticalAlignment="Center" Grid.Row="2" Grid.Column="1" Name="chbC"></CheckBox>
         <CheckBox Content="板模板" VerticalAlignment="Center" Grid.Row="2" Grid.Column="2" Name="chbF"></CheckBox>
-        <CheckBox Content="梁混凝土量" VerticalAlignment="Center" Grid.Row="3" Name="chbBc"></CheckBox>
-        <CheckBox Content="柱混凝土量" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Name="chbCc"></CheckBox>
-        <CheckBox Content="板混凝土量" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Name="chbFc"></CheckBox>
-        <TextBlock  Text="建筑首层:" Grid.Row="5" VerticalAlignment="Center" Foreground="DodgerBlue"></TextBlock>
-        <ComboBox ToolTip="指定建筑首层，以上为正楼层，以下为负楼层" Grid.Row="5" Name="fstCmb" Grid.ColumnSpan="3" Height="25" Width="200" HorizontalAlignment="Right" FontSize="14" Background="White" ></ComboBox>
-        <Button Grid.ColumnSpan="3" Grid.Row="6" Margin="50,5,50,5" Foreground="DodgerBlue" Background="White" Content="确定" FontSize="16" Name="btnEnter" Click="btnEnter_Click"></Button>
+        <CheckBox Content="墙模板" VerticalAlignment="Center" Grid.Row="3" Name="chbW"/>
+        <CheckBox Content="楼梯模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Name="chbS"></CheckBox>
+        <CheckBox Content="基础模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Name="chbFd"></CheckBox>
+        <CheckBox Content="梁混凝土量" VerticalAlignment="Center" Grid.Row="4" Name="chbBc"></CheckBox>
+        <CheckBox Content="柱混凝土量" VerticalAlignment="Center" Grid.Row="4" Grid.Column="1" Name="chbCc"></CheckBox>
+        <CheckBox Content="板混凝土量" VerticalAlignment="Center" Grid.Row="4" Grid.Column="2" Name="chbFc"></CheckBox>
+        <CheckBox Content="墙混凝土量" VerticalAlignment="Center" Grid.Row="5" Name="chbWc"></CheckBox>
+        <CheckBox Content="楼梯混凝土量" VerticalAlignment="Center" Grid.Row="5" Grid.Column="1" Name="chbSc"></CheckBox>
+        <CheckBox Content="基础混凝土量" VerticalAlignment="Center" Grid.Row="5" Grid.Column="2" Name="chbFDc"></CheckBox>
+        <TextBlock  Text="建筑首层:" Grid.Row="7" VerticalAlignment="Center" Foreground="DodgerBlue"></TextBlock>
+        <ComboBox ToolTip="指定建筑首层，以上为正楼层，以下为负楼层" Grid.Row="7" Name="fstCmb" Margin="0,0,20,0" Grid.ColumnSpan="3" Height="25" Width="200" HorizontalAlignment="Right" FontSize="14" Background="White" ></ComboBox>
+        <StackPanel Orientation="Horizontal" Grid.Row="8" Margin="5" Grid.ColumnSpan="3">
+            <Button Grid.ColumnSpan="3" Foreground="DodgerBlue" Background="White" IsDefault="True" Width="70" Margin="110,0,0,0"  Content="确定" FontSize="16" Name="btnEnter" Click="BtnEnter_Click"></Button>
+            <Button Grid.ColumnSpan="3" Foreground="DodgerBlue" Background="White" IsCancel="True" Width="70" Margin="5,0,0,0"   Content="取消" FontSize="16" Name="btnCancel" Click="BtnCancel_Click"></Button>
+        </StackPanel>
+        
     </Grid>
 </Window>

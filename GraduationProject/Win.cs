@@ -25,7 +25,7 @@ namespace TemplateCount
         public UIDocument uiDoc;
         public List<string> chbStrList;
         public string modeStr;
-        public List<int> levList;
+        public List<int> levList=new List<int>();
         public string oneFlName;
         public int p=1;
         public Win(UIDocument uidoc)
@@ -37,23 +37,30 @@ namespace TemplateCount
 
         private void Win_Loaded(object sender, RoutedEventArgs e)
         {
-            chbB.IsChecked = true;
-            chbC.IsChecked = true;
-            chbF.IsChecked = true;
-            chbBc.IsChecked = true;
-            chbFc.IsChecked = true;
-            chbCc.IsChecked = true;
+            //chbB.IsChecked = true;
+            //chbC.IsChecked = true;
+            //chbF.IsChecked = true;
+            //chbBc.IsChecked = true;
+            //chbFc.IsChecked = true;
+            //chbCc.IsChecked = true;
+            //chbS.IsChecked = true;
+            //chbFd.IsChecked = true;
+            chbW.IsChecked = true;
+            //chbWc.IsChecked = true;
+            //chbFDc.IsChecked = true;
+            //chbSc.IsChecked = true;
             List<Level> levList = bc.GetLevList(uiDoc.Document);
             fstCmb.ItemsSource = levList.ConvertAll(m => m.Name);
             fstCmb.SelectedIndex = 0;
         }
 
-        private void btnEnter_Click(object sender, RoutedEventArgs e)
+        private void BtnEnter_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = true;
+            this.Close();
         }
 
-        private void dignWin_Closed(object sender, EventArgs e)
+        private void DignWin_Closed(object sender, EventArgs e)
         {
             List<CheckBox> chbList = new List<CheckBox>();
             chbList.Add(chbB);
@@ -62,6 +69,12 @@ namespace TemplateCount
             chbList.Add(chbBc);
             chbList.Add(chbCc);
             chbList.Add(chbFc);
+            chbList.Add(chbS);
+            chbList.Add(chbW);
+            chbList.Add(chbFd);
+            chbList.Add(chbSc);
+            chbList.Add(chbWc);
+            chbList.Add(chbFDc);
             chbStrList = new List<string>();
             foreach (CheckBox chb in chbList)
             {
@@ -76,7 +89,7 @@ namespace TemplateCount
                 //DialogResult = true;
                 if (s == "all")
                 {
-                    levList.Add(100000);
+                    levList.Add(int.MaxValue);
                 }
                 else
                 {
@@ -87,7 +100,11 @@ namespace TemplateCount
                     foreach (string str in ssp)
                     {
                         char[] scha =str.ToCharArray();
-                        if (scha.Contains('-'))//如果是相连着的
+                        if (str=="all")
+                        {
+                            levList.Add(int.MaxValue);
+                        }
+                       else if (scha.Contains('-'))//如果是相连着的
                         {
                             string cstr = null;
                             foreach (Char c in scha)
@@ -123,7 +140,7 @@ namespace TemplateCount
                             flNum.Add(i);
                         }
                     }
-                    levList = flNum;
+                    levList.AddRange(flNum);
                 }
                 //string st = null;
                 //foreach (int lev in levList)
@@ -131,16 +148,19 @@ namespace TemplateCount
                 //    st += lev.ToString() + "\r\n";
                 //}
                 //MessageBox.Show(st, "楼层数", MessageBoxButton.OK);
-                p =1;
             }
             catch
             {
-                p = 0;
                 MessageBox.Show("楼层输入框输入出错", "警告", MessageBoxButton.OK);
             }
             
         }
 
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = false;
+            this.Close();
+        }
     }
 }
 

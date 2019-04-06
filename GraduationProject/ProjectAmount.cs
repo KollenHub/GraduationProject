@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.DB;
 using bc = TemplateCount.BasisCode;
+
 namespace TemplateCount
 {
 
@@ -43,13 +44,14 @@ namespace TemplateCount
         /// </summary>
         public string componentHighth { get; set; }
         /// <summary>
+        /// 模板ID
+        /// </summary>
+        public int TpId { get; set; }
+        /// <summary>
         /// 模板未扣减的尺寸（长x宽）
         /// </summary>
         public string TemplateSize { get; set; }
         /// <summary>
-        /// 模板扣减的尺寸（长x宽）
-        /// </summary>
-        public string TemplateDelSize { get; set; }
         /// <summary>
         /// 混凝土工程量（立方米）
         /// </summary>
@@ -58,12 +60,7 @@ namespace TemplateCount
         /// 总的模板数量（平方米）
         /// </summary>
         public double TemplateAmount { get; set; }
-        /// <summary>
-        /// 模板个数
-        /// </summary>
-        public int TemplateNum { get; set; }
-
-
+       
         public string TypeName = null;
         /// <summary>
         /// 多种多样的构件构造函数
@@ -72,29 +69,54 @@ namespace TemplateCount
         {
         }
         /// <summary>
-        /// 梁柱模板字段
+        /// 模板工程量样板
         /// </summary>
-        /// <param name="fi">梁实例</param>
-        /// <param name="lev">梁所在标高</param>
-        /// <param name="templateSize">模板尾扣减时的尺寸（长x宽）</param>
-        /// <param name="tempDelSize">模板扣减数量（平方米）</param>
-        /// <param name="templateamount">模板最终的数量（平方米）</param>
-        /// <param name="num">个数</param>
-        public ProjectAmount(FamilyInstance fi, Level lev, ProjectCountCommand.TypeName tpName, string templateSize, string tempDelSize, double templateamount, int num)
+        /// <param name="ds"></param>
+        /// <param name="tpName"></param>
+        public ProjectAmount(Element ds,bc.TypeName tpName,bool isFirst=false)
         {
-            this.ComponentName = fi.Name.ToString();
-            this.ComponentType = fi.Symbol.Family.Name.ToString();
-            this.LevelName = lev.Name.ToString();
-            if (fi.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns)
-                this.componentHighth = fi.LookupParameter("长度").AsValueString();
-            else
-                this.ComponentLength = fi.LookupParameter("长度").AsValueString();
-            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
-            this.ElemId = fi.Id.IntegerValue;
-            this.TemplateSize = templateSize;
-            this.TemplateDelSize = tempDelSize;
-            this.TemplateAmount = bc.TRF(templateamount, 3);
-            this.TemplateNum = num;
+            Document doc = ds.Document;
+            Element hostElem = doc.GetElement(new ElementId(ds.LookupParameter("HostElemID").AsInteger()));
+            if (isFirst) {
+                this.ComponentName = hostElem.Name;
+                this.ElemId = hostElem.Id.IntegerValue;
+                switch (tpName)
+                {
+                    case bc.TypeName.板模板:
+                        Floor fl = hostElem as Floor;
+                        this.ComponentType = fl.FloorType.Name;
+                        this.LevelName = doc.GetElement(fl.LevelId).Name;
+                        break;
+                    case bc.TypeName.梁模板:
+                        FamilyInstance bfi = hostElem as FamilyInstance;
+                        this.ComponentType = bfi.Symbol.FamilyName;
+                        this.LevelName = doc.GetElement(bfi.Host.Id).Name;
+                        this.ComponentLength = bfi.LookupParameter("长度").AsValueString();
+                        break;
+                    case bc.TypeName.柱模板:
+                        FamilyInstance cfi = hostElem as FamilyInstance;
+                        this.ComponentType = cfi.Symbol.FamilyName;
+                        this.LevelName = doc.GetElement(cfi.LevelId).Name;
+                        this.componentHighth = cfi.LookupParameter("长度").AsValueString();
+                        break;
+                    case bc.TypeName.墙模板:
+                        Wall wal = hostElem as Wall;
+                        break;
+                    case bc.TypeName.楼梯模板:
+
+                        break;
+                    case bc.TypeName.基础模板:
+
+                        break;
+                    default:
+                        break;
+                }
+            }
+            
+            this.TypeName = Enum.GetName(typeof(bc.TypeName), tpName);
+            this.TpId = ds.Id.IntegerValue;
+            this.TemplateSize = ds.LookupParameter("模板尺寸").AsString();
+            this.TemplateAmount =Convert.ToDouble( ds.LookupParameter("模板面积").AsValueString());
         }
         /// <summary>
         /// 板模板的构造函数
@@ -104,7 +126,7 @@ namespace TemplateCount
         /// <param name="templateSize">模板尺寸</param>
         /// <param name="templateamount">模板量</param>
         /// <param name="num">模板数量</param>
-        public ProjectAmount(Floor fl, Level lev, ProjectCountCommand.TypeName tpName, string templateSize, double templateamount, int num)
+        public ProjectAmount(Floor fl, Level lev, bc.TypeName tpName, string templateSize, double templateamount, int num)
         {
             this.ComponentName = fl.Name.ToString();
             this.ComponentType = fl.FloorType.FamilyName;
@@ -112,8 +134,7 @@ namespace TemplateCount
             this.ElemId = fl.Id.IntegerValue;
             this.TemplateSize = templateSize;
             this.TemplateAmount = bc.TRF(templateamount, 3);
-            this.TemplateNum = num;
-            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(bc.TypeName), tpName);
         }
         /// <summary>
         /// 梁柱混凝土字段
@@ -122,7 +143,7 @@ namespace TemplateCount
         /// <param name="lev"> 标高</param>
         /// <param name="tpName"> 类型</param>
         /// <param name="volumes">工程量</param>
-        public ProjectAmount(FamilyInstance borc, Level lev, ProjectCountCommand.TypeName tpName, double volumes)
+        public ProjectAmount(FamilyInstance borc, Level lev, bc.TypeName tpName, double volumes)
         {
             this.ComponentName = borc.Name.ToString();
             this.ComponentType = borc.Symbol.Family.Name.ToString();
@@ -131,7 +152,7 @@ namespace TemplateCount
             this.ComponentLength = borc.LookupParameter("长度").AsValueString();
             this.ElemId = borc.Id.IntegerValue;
             this.ConcretVolumes = bc.TRF(volumes, 3);
-            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(bc.TypeName), tpName);
         }
         /// <summary>
         /// 板混凝土字段
@@ -140,7 +161,7 @@ namespace TemplateCount
         /// <param name="lev"> 标高</param>
         /// <param name="tpName"> 类型</param>
         /// <param name="volumes">工程量</param>
-        public ProjectAmount(Floor fl, Level lev, ProjectCountCommand.TypeName tpName, double volumes)
+        public ProjectAmount(Floor fl, Level lev, bc.TypeName tpName, double volumes)
         {
             this.ComponentName = fl.Name.ToString();
             this.ComponentType = fl.FloorType.Name.ToString();
@@ -155,7 +176,7 @@ namespace TemplateCount
             this.LevelName = lev.Name.ToString();
             this.ElemId = fl.Id.IntegerValue;
             this.ConcretVolumes = bc.TRF(volumes, 3);
-            this.TypeName = Enum.GetName(typeof(ProjectCountCommand.TypeName), tpName);
+            this.TypeName = Enum.GetName(typeof(bc.TypeName), tpName);
         }
 
     }

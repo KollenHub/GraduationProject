@@ -27,44 +27,82 @@ namespace TemplateCount
             List<List<FamilyInstance>> colListList = new List<List<FamilyInstance>>();
             //所有需要配模板的板的集合          
             List<List<Floor>> flListList = new List<List<Floor>>();
-
-            for (int i = 0; i < levList.Count; i++)
+            using (TransactionGroup transGroup = new TransactionGroup(doc, "模型预处理"))
             {
-                Level lev = levList[i];
-                //需要配模的墙实例
-                List<Wall> wallList = bc.FilterElementList<Wall>(doc).ConvertAll(m => m as Wall).Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
-                //需要配模的梁实例
-                List<FamilyInstance> beamList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralFraming)
-                    .ConvertAll(m => m as FamilyInstance).Where(m => m.Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
-                //需要配模的柱实例
-                List<FamilyInstance> colList = bc.FilterElementList(doc, BuiltInCategory.OST_StructuralColumns)
-                    .ConvertAll(m => m as FamilyInstance).Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
-                //标高以下的柱子
-                List<FamilyInstance> nextColList = null;
-                if (i > 0)
+                transGroup.Start();
+                for (int i = 0; i < levList.Count; i++)
                 {
-                    nextColList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns)
-                        .ConvertAll(m => m as FamilyInstance).Where(m => m.LevelId.IntegerValue == levList[i - 1].Id.IntegerValue).ToList();
-                }
-                //参与比较的柱子
-                List<FamilyInstance> compareColList = null;
-                if (nextColList == null)
-                {
-                    compareColList = colList;
-                }
-                else { compareColList = nextColList; }
+                    Level lev = levList[i];
+                    //需要配模的墙实例
+                    List<Wall> wallList = bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).ConvertAll(m => m as Wall);
+                    //需要配模的梁实例
+                    List<FamilyInstance> beamList = bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralFraming,lev)
+                        .ConvertAll(m => m as FamilyInstance);
+                    //需要配模的柱实例
+                    List<FamilyInstance> colList = bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralColumns,lev)
+                        .ConvertAll(m => m as FamilyInstance);
+                    //标高以下的柱子
+                    List<FamilyInstance> nextColList = new List<FamilyInstance>();
+                    if (i > 0)
+                    {
+                        nextColList = bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralColumns,levList[i-1])
+                            .ConvertAll(m => m as FamilyInstance);
+                    }
+                    //参与比较的柱子
+                    List<FamilyInstance> compareColList = null;
+                    if (nextColList.Count == 0)
+                    {
+                        compareColList = colList;
+                    }
+                    else { compareColList = nextColList; }
 
-                //需要配模的楼板实例
-                List<Floor> flList = bc.FilterElementList<Floor>(doc, BuiltInCategory.OST_Floors).ConvertAll(m => m as Floor)
-                    .Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
-                JoinBeamAndColumns(ref beamList, compareColList, doc);
-                List<FamilyInstance> beCutBeam_List = bc.JoinBeamToBeam(beamList, doc);
-                FloorJoinBeamAndColumn(levList, flList, doc);
+                    //需要配模的楼板实例
+                    List<Floor> flList = bc.FilterElementList<Floor>(doc, BuiltInCategory.OST_Floors,lev).ConvertAll(m => m as Floor);
+                    ////处理梁柱关系
+                    //JoinBeamAndColumns(ref beamList, compareColList, doc);
+                    //List<FamilyInstance> beCutBeam_List = bc.JoinBeamToBeam(beamList, doc);
+                    ////处理板和梁柱的关系
+                    //FloorJoinBeamAndColumn(levList, flList, doc);
+                    //处理墙和柱子的连接
+                    WallJoinColumns(doc, wallList);
 
+                }
+                transGroup.Assimilate();
             }
 
             return Result.Succeeded;
         }
+
+        private void WallJoinColumns(Document doc, List<Wall> wallList)
+        {
+
+            foreach (Wall wal in wallList)
+            {
+                Solid walSd = bc.AllSolid_Of_Element(wal)[0];
+                ElementIntersectsSolidFilter sdFilter = new ElementIntersectsSolidFilter(walSd);
+                IList<Element> joinElemList = new FilteredElementCollector(doc).WherePasses(sdFilter).ToElements();
+                Transaction transJoin = new Transaction(doc, "连接");
+                transJoin.Start();
+                foreach (Element e in joinElemList)
+                {
+                    //排除掉自己本身
+                    if (e.Id.IntegerValue == wal.Id.IntegerValue) continue;
+                    //是板梁柱的话
+                    if (e is Floor || e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming || e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns)
+                    {
+                        SubTransaction subTrans = new SubTransaction(doc);
+                        subTrans.Start();
+                        if (JoinGeometryUtils.AreElementsJoined(doc, e, wal) == false)
+                            JoinGeometryUtils.JoinGeometry(doc, e, wal);
+                        subTrans.Commit();
+                        if (JoinGeometryUtils.IsCuttingElementInJoin(doc, e, wal) == false)
+                            JoinGeometryUtils.SwitchJoinOrder(doc, e, wal);
+                    }
+                }
+                transJoin.Commit();
+            }
+        }
+
         /// <summary>
         /// 梁柱连接
         /// </summary>
