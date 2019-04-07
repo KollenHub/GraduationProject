@@ -67,6 +67,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DelCommand.cs" />
     <Compile Include="TemplateGenerate.cs" />
     <Compile Include="ConflictResolution.cs" />
     <Compile Include="BasisCode.cs" />

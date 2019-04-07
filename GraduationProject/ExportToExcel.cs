@@ -47,11 +47,12 @@ namespace TemplateCount
             //新建工作簿
             using (ExcelPackage package = new ExcelPackage(newFile))
             {
-                //
                 int i = 0;
                 ExcelWorksheet[] sheetList = new ExcelWorksheet[pAListList_List.Count];
                 foreach (List<List<ProjectAmount>> tpaListList in pAListList_List)
                 {
+                    //如果为空则返回
+                    if (tpaListList.Count == 0) continue;
                     //第一个文档
                     ProjectAmount tpa = tpaListList[0][0];
                     //取得算量模板的属性

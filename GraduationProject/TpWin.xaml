@@ -24,7 +24,7 @@
         <CheckBox Content="楼梯模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="1" Name="chbS" IsChecked="True"></CheckBox>
         <CheckBox Content="基础模板" VerticalAlignment="Center" Grid.Row="3" Grid.Column="2" Name="chbFd" IsChecked="True"></CheckBox>
         <StackPanel Orientation="Horizontal" Grid.Row="8" Margin="5" Grid.ColumnSpan="3">
-            <Button Grid.ColumnSpan="3" Foreground="DodgerBlue" Background="White" IsDefault="True" Width="70" Margin="60,0,0,0"  Content="确定" FontSize="16" Name="btnEnter" Click="BtnEnter_Click"></Button>
+            <Button Grid.ColumnSpan="3" Foreground="DodgerBlue" Background="White" IsDefault="True" Width="70" Margin="55,0,0,0"  Content="确定" FontSize="16" Name="btnEnter" Click="BtnEnter_Click"></Button>
             <Button Grid.ColumnSpan="3" Foreground="DodgerBlue" Background="White" IsCancel="True" Width="70" Margin="5,0,0,0"   Content="取消" FontSize="16" Name="btnCancel" Click="BtnCancel_Click"></Button>
         </StackPanel>
         

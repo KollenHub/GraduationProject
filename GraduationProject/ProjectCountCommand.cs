@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using bc = TemplateCount.BasisCode;
 namespace TemplateCount
@@ -30,29 +31,18 @@ namespace TemplateCount
                         hostElemList .AddRange( bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralColumns,lev));
                         break;
                     case bc.TypeName.墙模板:
-                        hostElemList = bc.FilterElementList<Wall>(doc);
+                        hostElemList.AddRange(bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls, lev));
                         break;
                     case bc.TypeName.楼梯模板:
-                        hostElemList = bc.FilterElementList(doc, BuiltInCategory.OST_Stairs);
+                        hostElemList.AddRange(bc.FilterElementList<Stairs>(doc, BuiltInCategory.OST_Stairs, lev));
                         break;
                     case bc.TypeName.基础模板:
-                        hostElemList = bc.FilterElementList(doc, BuiltInCategory.OST_StructuralFoundation);
+                        hostElemList.AddRange(bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralFoundation,lev));
                         break;
                     default:
                         break;
                 }
             }
-
-            List<Element> levElemList = new List<Element>();
-            //标高筛选
-
-            //if (tyName == bc.TypeName.梁模板)
-            //    levElemList.AddRange(hostElemList.Where(m => (m as FamilyInstance).Host.Id.IntegerValue == lev.Id.IntegerValue).Count()>0?
-            //        hostElemList.Where(m => (m as FamilyInstance).Host.Id.IntegerValue == lev.Id.IntegerValue):new List<Element>());
-            //else
-            //    levElemList.AddRange(hostElemList.Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).Count()>0?
-            //        hostElemList.Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue):new List<Element>());
-            //每个主体对应的模板
             List<List<Element>> TpListList = hostElemList.ConvertAll(m => new List<Element>() { m });
             //模板集合
             List<Element> dsList = bc.FilterElementList<DirectShape>(doc);

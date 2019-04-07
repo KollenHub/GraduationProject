@@ -10,6 +10,9 @@ using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.ApplicationServices;
 using System.IO;
 using bc = TemplateCount.BasisCode;
+using Autodesk.Revit.DB.Architecture;
+using SWF= System.Windows.Forms;
+
 namespace TemplateCount
 {
     [Transaction(TransactionMode.Manual)]
@@ -47,6 +50,9 @@ namespace TemplateCount
                     List<Element> colList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns);
                     List<Element> walList = bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).Where(m => m.Name.Contains("DW")).Count()>0? 
                         bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).Where(m => m.Name.Contains("DW")).ToList():new List<Element>();
+                    List<Element> stairsList = bc.FilterElementList<Stairs>(doc, BuiltInCategory.OST_Stairs).ToList();
+                    List<Element> basisList = bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralFoundation);
+                    //SWF.MessageBox.Show(stairsList.Count.ToString());  
                     string failureElemIds = null;
                     Transaction trans = new Transaction(doc, "创建模板");
                     trans.Start();
@@ -91,17 +97,10 @@ namespace TemplateCount
                             foreach (Face bface in sd.Faces)
                             {
                                 XYZ faceNormal = bface.ComputeNormal(new UV(0, 0)).Normalize();
-                                bool isGenerate = false;
                                 if (locationCurve is Line)
                                 {
                                     Line l = locationCurve as Line;
-                                    XYZ dirt = l.Direction.Normalize();
-                                    if (faceNormal.IsAlmostEqualTo(dirt) || faceNormal.IsAlmostEqualTo(-dirt) || faceNormal.IsAlmostEqualTo(XYZ.BasisZ)) continue;
-                                    XYZ sideNormal = dirt.CrossProduct(XYZ.BasisZ).Normalize();
-                                    if (faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
-                                        isGenerate = true;
-                                    else if (faceNormal.IsAlmostEqualTo(sideNormal) || faceNormal.IsAlmostEqualTo(-sideNormal))
-                                        isGenerate = true;
+                                    if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ)) continue;
                                     try
                                     {
                                         bc.SurfaceLayerGernerate(doc, bface, dst, bInstance.Id);
@@ -170,6 +169,42 @@ namespace TemplateCount
                             }
                         }
                     }
+                    //楼梯模板
+                    foreach (Element stair in stairsList)
+                    {
+
+                        if (!checkOpt.Contains("楼梯模板")) break;
+                        Solid stairSolid = bc.AllUnionSolid(stair);
+                        foreach (Face sface in stairSolid.Faces)
+                        {
+                            XYZ faceNormal = sface.ComputeNormal(new UV(0, 0));
+                            if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ))
+                                continue;
+                            //try
+                            //{
+                                bc.SurfaceLayerGernerate(doc, sface, dst,stair.Id);
+                            //}
+                            //catch { failureElemIds += stair.Id.IntegerValue + "\r\n"; }
+                        }
+                    }
+                    //基础模板
+                    foreach (Element basis in basisList)
+                    {
+                        if (!checkOpt.Contains("基础模板")) break;
+                        Solid solid = bc.AllSolid_Of_Element(basis).OrderBy(m => m.Volume).Last();
+                        foreach (Face bsface in solid.Faces)
+                        {
+                            XYZ faceNormal = bsface.ComputeNormal(new UV(0, 0));
+                            if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ)||faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
+                                continue;
+                            //try
+                            //{
+                                bc.SurfaceLayerGernerate(doc, bsface, dst, basis.Id);
+                            //}
+                            //catch { failureElemIds += basis.Id.IntegerValue + "\r\n"; }
+                        }
+                    }
+
                     trans.Commit();
                     if (failureElemIds != null)
                         File.WriteAllText(@"C: \Users\BXS\Desktop\FailureText.txt", failureElemIds);

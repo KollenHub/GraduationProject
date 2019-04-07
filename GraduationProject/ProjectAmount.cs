@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using bc = TemplateCount.BasisCode;
 
 namespace TemplateCount
@@ -32,21 +33,29 @@ namespace TemplateCount
         public string LevelName { get; set; }
         //特殊属性
         /// <summary>
-        /// 构件长度（适用于柱梁板）
+        /// 构件长度
         /// </summary>
         public string ComponentLength { get; set; }
+        /// <summary>
+        /// 构件宽度
+        /// </summary>
+        public string ComponetWidth { get; set; }
         /// <summary>
         /// 构件材质
         /// </summary>
         public string MaterialName { get; set; }
         /// <summary>
-        /// 构件高度（适用于柱）
+        /// 构件高度
         /// </summary>
-        public string componentHighth { get; set; }
+        public string ComponentHighth { get; set; }
         /// <summary>
         /// 模板ID
         /// </summary>
         public int TpId { get; set; }
+        /// <summary>
+        /// 模板部位
+        /// </summary>
+        public string TpType { get; set; }
         /// <summary>
         /// 模板未扣减的尺寸（长x宽）
         /// </summary>
@@ -97,24 +106,32 @@ namespace TemplateCount
                         FamilyInstance cfi = hostElem as FamilyInstance;
                         this.ComponentType = cfi.Symbol.FamilyName;
                         this.LevelName = doc.GetElement(cfi.LevelId).Name;
-                        this.componentHighth = cfi.LookupParameter("长度").AsValueString();
+                        this.ComponentHighth = cfi.LookupParameter("长度").AsValueString();
                         break;
                     case bc.TypeName.墙模板:
                         Wall wal = hostElem as Wall;
+                        this.ComponentType = wal.WallType.Name;
+                        this.LevelName = doc.GetElement(wal.LevelId).Name;
+                        this.ComponentLength = wal.get_Parameter(BuiltInParameter.CURVE_ELEM_LENGTH).AsValueString();
+                        this.ComponentHighth = wal.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsValueString();
                         break;
                     case bc.TypeName.楼梯模板:
-
+                        Stairs stair = hostElem as Stairs;
+                        this.ComponentName = doc.GetElement(stair.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsElementId()).Name;
+                        this.ComponentType = stair.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
+                        this.LevelName = doc.GetElement(stair.get_Parameter(BuiltInParameter.STAIRS_BASE_LEVEL_PARAM).AsElementId()).Name;
                         break;
                     case bc.TypeName.基础模板:
-
+                        this.ComponetWidth = hostElem.get_Parameter(BuiltInParameter.CONTINUOUS_FOOTING_WIDTH).AsValueString();
+                        this.ComponentLength = hostElem.get_Parameter(BuiltInParameter.CONTINUOUS_FOOTING_LENGTH).AsValueString();
                         break;
                     default:
                         break;
                 }
             }
-            
             this.TypeName = Enum.GetName(typeof(bc.TypeName), tpName);
             this.TpId = ds.Id.IntegerValue;
+            this.TpType = ds.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).AsString();
             this.TemplateSize = ds.LookupParameter("模板尺寸").AsString();
             this.TemplateAmount =Convert.ToDouble( ds.LookupParameter("模板面积").AsValueString());
         }

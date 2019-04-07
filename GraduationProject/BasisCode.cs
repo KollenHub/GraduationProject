@@ -10,6 +10,8 @@ using System.Windows;
 using SWF = System.Windows.Forms;
 using Autodesk.Revit.DB;
 using bc = TemplateCount.BasisCode;
+using Autodesk.Revit.DB.Architecture;
+
 namespace TemplateCount
 {
     public static class BasisCode
@@ -31,68 +33,8 @@ namespace TemplateCount
             基础砼工程量 = 11,
 
         }
-        /// <summary>
-        /// 返回项目中按照高程从小到大排列后的标高集合
-        /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <returns></returns>
-        public static List<Level> GetLevList(Document doc)
-        {
-            List<Level> levList = new FilteredElementCollector(doc).OfClass(typeof(Level)).OfCategory(BuiltInCategory.OST_Levels).ToList()
-                .ConvertAll(m => (m as Level)).OrderBy(m => m.Elevation).ToList();
-            return levList;
-        }
-        /// <summary>
-        /// 返回过滤器元素集合
-        /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <param name="ty">查找的元素类型</param>
-        /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
-        /// <returns></returns>
-        public static List<Element> FilterElementList<T>(Document doc, BuiltInCategory bIC,Level lev=null)where T:class
-        {
-            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).OfCategory(bIC).ToList();
-            if (lev!=null)
-            {
-                try
-                {
-                    if (elemList[0].Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming)
-                        elemList = elemList.Where(m => (m as FamilyInstance).Host!=null&&(m as FamilyInstance).Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
-                    else
-                        elemList = elemList.Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
-                }
-                catch
-                {
-                    return new List<Element>();
-                }
-            }
-            return elemList;
 
-        }
-        /// <summary>
-        /// 返回过滤器元素集合
-        /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <param name="ty">查找的元素类型</param>
-        /// <returns></returns>
-        public static List<Element> FilterElementList<T>(Document doc)where T:class
-        {
 
-            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).ToList();
-            return elemList;
-        }
-        
-        /// <summary>
-        /// 返回过滤器元素集合
-        /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
-        /// <returns></returns>
-        public static List<Element> FilterElementList(Document doc, BuiltInCategory bIC)
-        {
-            List<Element> elemList = new FilteredElementCollector(doc).OfCategory(bIC).ToList();
-            return elemList;
-        }
 
         /// <summary>
         /// 求一条梁的底面以及其对应的侧面的集合的集合
@@ -347,7 +289,7 @@ namespace TemplateCount
             double h = area / c;
             return h;
         }
-        
+
 
         /// <summary>
         /// 转换面积（中转英）
@@ -432,6 +374,90 @@ namespace TemplateCount
                 }
             }
             return sface.Area;
+        }
+
+        /// <summary>
+        /// 获取楼板的底面
+        /// </summary>
+        /// <param name="fl">楼板</param>
+        /// <returns></returns>
+        public static Face SlabBottomFace(Floor fl)
+        {
+            Face bface = null;
+            Options opt = new Options();
+            opt.ComputeReferences = true;
+            opt.DetailLevel = ViewDetailLevel.Fine;
+            opt.IncludeNonVisibleObjects = false;
+            GeometryElement gelem = fl.get_Geometry(opt);
+            IEnumerator elemEnum = gelem.GetEnumerator();
+            while (elemEnum.MoveNext())
+            {
+                GeometryObject gobj = elemEnum.Current as GeometryObject;
+                if (gobj is Solid)
+                {
+                    Solid sd = gobj as Solid;
+                    foreach (Face face in sd.Faces)
+                    {
+                        if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                        {
+                            bface = face;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return bface;
+        }
+
+
+
+
+        /// <summary>
+        /// 主体模板生成
+        /// </summary>
+        /// <param name="hostElemList">构件List</param>
+        /// <param name="normalList">排除面的法向</param>
+        /// <returns>生成有问题的构件的id</returns>
+        public static string HostElemTpGenerate(List<Element> hostElemList,DirectShapeType dst,List<XYZ> normalList)
+        {
+            Document doc = hostElemList[0].Document;
+            List<Solid> solidList = new List<Solid>();
+            List<ElementId> failureIdList = new List<ElementId>();
+            string failureTxt = null;
+            foreach (Element hostElem in hostElemList)
+            {
+                if (hostElem is Stairs)
+                    solidList.Add(bc.AllUnionSolid(hostElem));
+                else if (hostElem.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFoundation))
+                    solidList.Add(bc.AllSolid_Of_Element(hostElem).OrderBy(m => m.Volume).Last());
+                else
+                    solidList = bc.AllSolid_Of_Element(hostElem);
+                foreach (Solid sd in solidList)
+                {
+                    foreach (Face face in sd.Faces)
+                    {
+                        XYZ faceNormal = face.ComputeNormal(new UV(0, 0));
+                        if (normalList.Where(m => m.IsAlmostEqualTo(faceNormal)).Count() > 0) continue;
+                        try
+                        {
+                            bc.SurfaceLayerGernerate(doc, face, dst, hostElem.Id);
+                        }
+                        catch
+                        {
+                            if (failureIdList.Count == 0 || failureIdList.Where(m => m.IntegerValue == hostElem.Id.IntegerValue).Count() == 0)
+                                failureIdList.Add(hostElem.Id);
+                        }
+                    }
+                }
+            }
+            if (failureIdList.Count!=0)
+            {
+                failureIdList.ConvertAll(m => failureTxt += m.IntegerValue + "\r\n");
+            }
+            return failureTxt;
+
+
         }
         /// <summary>
         /// 返回被剪切的梁集合
@@ -536,6 +562,14 @@ namespace TemplateCount
                         str = "构件标高";
                         i = 15;
                         break;
+                    case "ComponentHighth":
+                        str = "构件高度";
+                        i = 15;
+                        break;
+                    case "ComponentWidth":
+                        str = "构件宽度(mm)";
+                        i = 15;
+                        break;
                     case "ComponentLength":
                         str = "构件长度(mm)";
                         i = 15;
@@ -546,7 +580,11 @@ namespace TemplateCount
                         break;
                     case "TpId":
                         str = "模板ID";
-                            i = 15;
+                        i = 15;
+                        break;
+                    case "TpType":
+                        str = "模板部位";
+                        i = 20;
                         break;
                     case "TemplateSize":
                         str = "模板尺寸";
@@ -577,38 +615,110 @@ namespace TemplateCount
             return proNameList;
 
         }
+
         /// <summary>
-        /// 获取楼板的底面
+        /// 返回项目中按照高程从小到大排列后的标高集合
         /// </summary>
-        /// <param name="fl">楼板</param>
+        /// <param name="doc">项目文档</param>
         /// <returns></returns>
-        public static Face SlabBottomFace(Floor fl)
+        public static List<Level> GetLevList(Document doc)
         {
-            Face bface = null;
-            Options opt = new Options();
-            opt.ComputeReferences = true;
-            opt.DetailLevel = ViewDetailLevel.Fine;
-            opt.IncludeNonVisibleObjects = false;
-            GeometryElement gelem = fl.get_Geometry(opt);
-            IEnumerator elemEnum = gelem.GetEnumerator();
-            while (elemEnum.MoveNext())
+            List<Level> levList = new FilteredElementCollector(doc).OfClass(typeof(Level)).OfCategory(BuiltInCategory.OST_Levels).ToList()
+                .ConvertAll(m => (m as Level)).OrderBy(m => m.Elevation).ToList();
+            return levList;
+        }
+        /// <summary>
+        /// 返回过滤器元素集合
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="ty">查找的元素类型</param>
+        /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
+        /// <returns></returns>
+        public static List<Element> FilterElementList<T>(Document doc, BuiltInCategory bIC, Level lev = null) where T : class
+        {
+            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).OfCategory(bIC).ToList();
+            if (lev != null)
             {
-                GeometryObject gobj = elemEnum.Current as GeometryObject;
-                if (gobj is Solid)
+                try
                 {
-                    Solid sd = gobj as Solid;
-                    foreach (Face face in sd.Faces)
-                    {
-                        if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(new XYZ(0, 0, -1)))
-                        {
-                            bface = face;
-                            break;
-                        }
-                    }
+                    if (elemList[0].Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming)
+                        elemList = elemList.Where(m => (m as FamilyInstance).Host != null && (m as FamilyInstance).Host.Id.IntegerValue == lev.Id.IntegerValue).ToList();
+                    else if (elemList[0] is Stairs)
+                        elemList = elemList.Where(m => m.get_Parameter(BuiltInParameter.STAIRS_BASE_LEVEL_PARAM).AsElementId() == lev.Id).ToList();
+                    else
+                        elemList = elemList.Where(m => m.LevelId.IntegerValue == lev.Id.IntegerValue).ToList();
+
+                }
+                catch
+                {
+                    return new List<Element>();
                 }
             }
+            try
+            {
+                if (elemList[0].Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFoundation)
+                    elemList = elemList.Where(m => !(m as FamilyInstance).Symbol.Name.Contains("预制") && !(m as FamilyInstance).Symbol.Name.Contains("预制")).ToList();
+                else if (elemList[0] is FamilyInstance)
+                    elemList = elemList.Where(m => !(m as FamilyInstance).Symbol.FamilyName.Contains("钢") && !(m as FamilyInstance).Symbol.FamilyName.Contains("PC")).ToList();
+                else if (elemList[0] is Floor)
+                    elemList = elemList.Where(m => !(m as Floor).FloorType.Name.Contains("PC")).ToList();
+            }
+            catch
+            {
+                return new List<Element>();
+            }
+            return elemList;
 
-            return bface;
+        }
+
+        /// <summary>
+        /// 获取对应的模板工程量对象
+        /// </summary>
+        /// <param name="TpListList">模板对象</param>
+        /// <param name="tpName">那种类型的模板</param>
+        /// <returns></returns>
+        public static List<List<ProjectAmount>> ProjectAmoutList(List<List<Element>> TpListList, TypeName tpName)
+        {
+            List<List<ProjectAmount>> projectAmountList_List = new List<List<ProjectAmount>>();
+            foreach (List<Element> dsList in TpListList)//此处dsList的第一个为模板宿主对象
+            {
+                List<ProjectAmount> pAList = new List<ProjectAmount>();
+                foreach (Element ds in dsList)
+                {
+                    if (dsList.IndexOf(ds) == 0) continue;
+                    int index = dsList.IndexOf(ds);
+                    ProjectAmount TpA = new ProjectAmount(ds, tpName, dsList.IndexOf(ds) < 2 ? true : false);
+                    pAList.Add(TpA);
+                }
+                if (pAList.Count != 0)
+                    projectAmountList_List.Add(pAList);
+            }
+            return projectAmountList_List;
+        }
+
+        /// <summary>
+        /// 返回过滤器元素集合
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="ty">查找的元素类型</param>
+        /// <returns></returns>
+        public static List<Element> FilterElementList<T>(Document doc) where T : class
+        {
+
+            List<Element> elemList = new FilteredElementCollector(doc).OfClass(typeof(T)).ToList();
+            return elemList;
+        }
+
+        /// <summary>
+        /// 返回过滤器元素集合
+        /// </summary>
+        /// <param name="doc">项目文档</param>
+        /// <param name="bIC">查找的元素对应的BuiltInCategory</param>
+        /// <returns></returns>
+        public static List<Element> FilterElementList(Document doc, BuiltInCategory bIC)
+        {
+            List<Element> elemList = new FilteredElementCollector(doc).OfCategory(bIC).ToList();
+            return elemList;
         }
         /// <summary>
         /// 获取实体的全部Solid
@@ -664,7 +774,58 @@ namespace TemplateCount
             { }
             return solid_list;
         }
+        /// <summary>
+        /// 获取楼梯合并solid
+        /// </summary>
+        /// <param name="e"></param>
+        /// <returns></returns>
+        public static Solid AllUnionSolid(Element e)
+        {
+            Solid sd = null;
+            try
+            {
+                Options options = new Options();
+                options.IncludeNonVisibleObjects = false;
+                options.DetailLevel = ViewDetailLevel.Fine;
+                options.ComputeReferences = true;
 
+                GeometryElement geoElement1 = e.get_Geometry(options);//点进去
+                IEnumerator enumerator = geoElement1.GetEnumerator();
+                {
+                    while (enumerator.MoveNext())
+                    {
+                        GeometryObject gobj = enumerator.Current as GeometryObject;
+                        if (gobj is GeometryInstance)
+                        {
+                            GeometryInstance geoInstance = gobj as GeometryInstance;
+                            GeometryElement gElem = geoInstance.SymbolGeometry;
+                            IEnumerator enumerator1 = gElem.GetEnumerator();
+                            while (enumerator1.MoveNext())
+                            {
+                                GeometryObject gobj1 = enumerator1.Current as GeometryObject;
+                                if (gobj1 is Solid)
+                                {
+                                    Solid solid = gobj1 as Solid;
+                                    if (sd == null) sd = solid;
+                                    else sd = BooleanOperationsUtils.ExecuteBooleanOperation(sd, solid, BooleanOperationsType.Union);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            { }
+            return sd;
+        }
+        /// <summary>
+        /// 模板生成
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="face"></param>
+        /// <param name="drt"></param>
+        /// <param name="HostELemID"></param>
+        /// <returns></returns>
         public static ElementId SurfaceLayerGernerate(Document doc, Face face, DirectShapeType drt, ElementId HostELemID)
         {
             DirectShape dsElem = DirectShape.CreateElement(doc, new ElementId(BuiltInCategory.OST_Parts), Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
@@ -679,6 +840,7 @@ namespace TemplateCount
             //对于生成的solid进行预处理
             sd = SolidHandle(doc, HostELemID, sd);
             double now = sd.Volume;
+            if (now == 0) return null;
             if (last == now)
             {
                 if (faceLoopList.Count == 1)
@@ -702,7 +864,15 @@ namespace TemplateCount
                         dsParamter.Set("楼板底模板");
                     else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
                         dsParamter.Set("梁底模板");
-
+                    else if (doc.GetElement(HostELemID) is Wall)
+                        dsParamter.Set("墙洞顶模板");
+                    else if (doc.GetElement(HostELemID) is Stairs)
+                        dsParamter.Set("平台底模板");
+                }
+                else if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ))
+                {
+                    //墙
+                    if (doc.GetElement(HostELemID) is Wall) dsParamter.Set("墙洞底模板");
                 }
                 else
                 {
@@ -712,6 +882,12 @@ namespace TemplateCount
                         dsParamter.Set("梁侧模板");
                     else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns))
                         dsParamter.Set("柱侧模板");
+                    else if (doc.GetElement(HostELemID) is Wall)
+                        dsParamter.Set("墙侧模板");
+                    else if (doc.GetElement(HostELemID) is Stairs)
+                        dsParamter.Set("楼梯侧模板");
+                    else if (doc.GetElement(HostELemID).Category.Id == new ElementId(BuiltInCategory.OST_StructuralFoundation))
+                        dsParamter.Set("基础侧模板");
                 }
             }
             catch (Exception e)
@@ -732,6 +908,7 @@ namespace TemplateCount
         /// <param name="curveList"></param>
         /// <returns></returns>
 
+        ///是否是矩形
         public static string RectTangleSize(List<Curve> curveList)
         {
             if (curveList.Count != 4) return "非矩形板";
@@ -744,24 +921,33 @@ namespace TemplateCount
             {
                 if (d == double.MaxValue)
                     d = bc.TRF(center.DistanceTo(xyz));
-                else if (d != bc.TRF(xyz.DistanceTo(center)))
+                else if (d - bc.TRF(xyz.DistanceTo(center)) > 10 / 304.8)
                     return "非矩形板";
             }
             string size = bc.TRF(xyzList[0].DistanceTo(xyzList[1]) * 304.8, 0).ToString() + "mm x" + bc.TRF(xyzList[1].DistanceTo(xyzList[2]) * 304.8, 0).ToString() + "mm";
             return size;
         }
 
+        /// <summary>
+        /// 处理碰撞
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="hostELemID"></param>
+        /// <param name="sd"></param>
+        /// <returns></returns>
         public static Solid SolidHandle(Document doc, ElementId hostELemID, Solid sd)
         {
+            //TODO:这里是取得该物体是否剪切别的物体
             Element hostElem = doc.GetElement(hostELemID);
+            //碰撞集合
             List<Element> elembeCutList = JoinGeometryUtils.GetJoinedElements(doc, hostElem).Where(m =>
             {
                 if (JoinGeometryUtils.AreElementsJoined(doc, doc.GetElement(m), hostElem))
                 {
-                    if (JoinGeometryUtils.IsCuttingElementInJoin(doc, hostElem, doc.GetElement(m)))
-                    {
-                        return true;
-                    }
+                    //if (JoinGeometryUtils.IsCuttingElementInJoin(doc, hostElem, doc.GetElement(m)))
+                    //{
+                    return true;
+                    //}
                 }
                 return false;
             }).ToList().ConvertAll(m => doc.GetElement(m));
@@ -771,25 +957,44 @@ namespace TemplateCount
                 try
                 {
                     elembeCutList = elembeCutList.Where(m => m.Category
-                       .Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
-                       .ToList();
+                        .Id == new ElementId(BuiltInCategory.OST_StructuralFraming) || m.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns).ToList();
                 }
                 catch { SWF.MessageBox.Show(hostELemID + ""); }
 
             }
             else if (hostElem is Floor)
             {
-                elembeCutList = elembeCutList.Where(m => m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming) 
-                || m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns)||m.Category.Id==new ElementId(BuiltInCategory.OST_Walls))
+                elembeCutList = elembeCutList.Where(m => m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming)
+                 || m.Category.Id == new ElementId(BuiltInCategory.OST_StructuralColumns) || m.Category.Id == new ElementId(BuiltInCategory.OST_Walls))
                         .ToList();
             }
-            else if (hostElem.Category.Id.IntegerValue==(int)BuiltInCategory.OST_StructuralColumns)
+            else if (hostElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns)
             {
                 elembeCutList = elembeCutList.Where(m => m is Wall && m.Name.Contains("DW")).ToList();
             }
             else if (hostElem is Wall)
             {
-                elembeCutList = elembeCutList.Where(m => m.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns).ToList();
+                Curve walCurve = (hostElem.Location as LocationCurve).Curve;
+                XYZ startPoint = walCurve.GetEndPoint(0);
+                XYZ endPoint = walCurve.GetEndPoint(1);
+                startPoint = new XYZ(startPoint.X, startPoint.Y, 0);
+                endPoint = new XYZ(endPoint.X, endPoint.Y, 0);
+                List<Element> walElemList = bc.FilterElementList<Wall>(doc).Where(m =>
+                  {
+                      if (hostElem.Id == m.Id) return false;
+                      if (!hostElem.Name.Contains("DW")) return false;
+                      if (hostElem.LevelId != m.LevelId) return false;
+                      Curve mc = (m.Location as LocationCurve).Curve;
+                      XYZ sp = mc.GetEndPoint(0);
+                      XYZ ep = mc.GetEndPoint(1);
+                      sp = new XYZ(sp.X, sp.Y, 0);
+                      ep = new XYZ(ep.X, ep.Y, 0);
+                      if (sp.IsAlmostEqualTo(startPoint) || sp.IsAlmostEqualTo(endPoint) || ep.IsAlmostEqualTo(endPoint) || ep.IsAlmostEqualTo(startPoint))
+                          return true;
+                      return false;
+                  }).ToList();
+                elembeCutList = elembeCutList.Where(m => m.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralColumns || (m is Wall && m.Name.Contains("DW"))).ToList();
+                elembeCutList.AddRange(walElemList);
             }
             Solid lastSolid = sd;
             foreach (Element e in elembeCutList)
@@ -811,7 +1016,7 @@ namespace TemplateCount
         /// <param name="doc"></param>
         /// <param name="app"></param>
         /// <returns></returns>
-        public  static bool ShareParameterGenerate(Document doc, Autodesk.Revit.ApplicationServices.Application app)
+        public static bool ShareParameterGenerate(Document doc, Autodesk.Revit.ApplicationServices.Application app)
         {
             //设置共享参数
             string TxtFileName = app.RecordingJournalFilename;
