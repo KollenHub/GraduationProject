@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using bc = TemplateCount.BasisCode;
@@ -133,7 +134,9 @@ namespace TemplateCount
             this.TpId = ds.Id.IntegerValue;
             this.TpType = ds.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS).AsString();
             this.TemplateSize = ds.LookupParameter("模板尺寸").AsString();
-            this.TemplateAmount =Convert.ToDouble( ds.LookupParameter("模板面积").AsValueString());
+            double tpAmount = ds.LookupParameter("模板面积").AsDouble()*0.3048*0.3048;
+            //MessageBox.Show(tpAmount.ToString());
+            this.TemplateAmount =bc.TRF(tpAmount,3);
         }
         /// <summary>
         /// 板模板的构造函数

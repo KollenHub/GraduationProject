@@ -45,7 +45,7 @@ namespace TemplateCount
                         transCreat.Commit();
                     }
                     else dst = bc.FilterElementList<DirectShapeType>(doc).Where(m => m.Name == "模板").First() as DirectShapeType;
-                    List<Floor> floorList = bc.FilterElementList<Floor>(doc).ConvertAll(m => m as Floor);
+                    List<Element> floorList = bc.FilterElementList<Floor>(doc);
                     List<Element> beamList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralFraming);
                     List<Element> colList = bc.FilterElementList<FamilyInstance>(doc,BuiltInCategory.OST_StructuralColumns);
                     List<Element> walList = bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls).Where(m => m.Name.Contains("DW")).Count()>0? 
@@ -57,86 +57,29 @@ namespace TemplateCount
                     Transaction trans = new Transaction(doc, "创建模板");
                     trans.Start();
                     //楼板
-                    foreach (Floor fl in floorList)
+                    if (checkOpt.Contains("板模板"))
                     {
-                        if(!checkOpt.Contains("板模板"))break;
-                        List<Solid> ElemSolidList = bc.AllSolid_Of_Element(fl);
-                        foreach (Solid sd in ElemSolidList)
-                        {
-                            foreach (Face face in sd.Faces)
-                            {
-
-                                if (face.ComputeNormal(new UV(0, 0)).IsAlmostEqualTo(-XYZ.BasisZ))
-                                {
-                                    try
-                                    {
-                                        bc.SurfaceLayerGernerate(doc, face, dst, fl.Id);
-                                    }
-                                    catch { failureElemIds += fl.Id.IntegerValue + "\r\n"; }
-                                }
-                            }
-                        }
+                     string flTxt=bc.HostElemTpGenerate(floorList, dst, new List<XYZ>() { XYZ.BasisZ });
+                        if (flTxt != null) failureElemIds += "楼板" + "\r\n" + flTxt;
                     }
                     //梁模板
-                    foreach (FamilyInstance bInstance in beamList)
+                    if (checkOpt.Contains("梁模板"))
                     {
-                        if (!checkOpt.Contains("梁模板")) break;
-                       
-                    IList<Solid> beamSolidList = bc.AllSolid_Of_Element(bInstance);
-                        Curve locationCurve = null;
-                        try
-                        {
-                            locationCurve = (bInstance.Location as LocationCurve).Curve;
-                        }
-                        catch
-                        {
-                            failureElemIds +="轴线出错" +bInstance.Id.IntegerValue + "\r\n";
-                        }
-                        foreach (Solid sd in beamSolidList)
-                        {
-                            foreach (Face bface in sd.Faces)
-                            {
-                                XYZ faceNormal = bface.ComputeNormal(new UV(0, 0)).Normalize();
-                                if (locationCurve is Line)
-                                {
-                                    Line l = locationCurve as Line;
-                                    if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ)) continue;
-                                    try
-                                    {
-                                        bc.SurfaceLayerGernerate(doc, bface, dst, bInstance.Id);
-                                    }
-                                    catch { failureElemIds += bInstance.Id.IntegerValue + "\r\n"; }
-                                }
-                            }
-                        }
+                     string beamTxt=bc.HostElemTpGenerate(beamList, dst, new List<XYZ>() { XYZ.BasisZ });
+                        if (beamTxt != null) failureElemIds += "梁" + "\r\n" + beamTxt;
                     }
                     //柱模板
-                    foreach (FamilyInstance colInstance in colList)
+                    if (checkOpt.Contains("柱模板"))
                     {
-                        if (!checkOpt.Contains("柱模板")) break;
-                        IList<Solid> colSolidList = bc.AllSolid_Of_Element(colInstance);
-                        foreach (Solid sd in colSolidList)
-                        {
-                            foreach (Face cface in sd.Faces)
-                            {
-                                XYZ faceNormal = cface.ComputeNormal(new UV(0, 0));
-                                if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ) || faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
-                                    continue;
-                                try
-                                {
-                                    bc.SurfaceLayerGernerate(doc, cface, dst, colInstance.Id);
-                                }
-                                catch { failureElemIds += colInstance.Id.IntegerValue + "\r\n"; }
-                            }
-                        }
+                     string colTxt=bc.HostElemTpGenerate(colList, dst, new List<XYZ>() { XYZ.BasisZ, -XYZ.BasisZ });
+                        if (colTxt != null) failureElemIds += "柱" + "\r\n" + colTxt;
                     }
                     //墙模板
-                    foreach (Wall wal in walList)
+                        foreach (Wall wal in walList)
                     {
-                       
+                        List<ElementId> failureWallIds = new List<ElementId>();
                         if (!checkOpt.Contains("墙模板")) break;
                         IList<Solid> walSolidList = bc.AllSolid_Of_Element(wal);
-                        //3维视图
                         foreach (Solid sd in walSolidList)
                         {
                             List<Face> faceList = sd.Faces.Cast<Face>().ToList();
@@ -165,49 +108,44 @@ namespace TemplateCount
                                 {
                                     bc.SurfaceLayerGernerate(doc, wface, dst, wal.Id);
                                 }
-                                catch { failureElemIds += wal.Id.IntegerValue + "\r\n"; }
+                                catch
+                                {
+                                    if (failureWallIds.Count == 0 || failureWallIds.Where(m => m.IntegerValue == wal.Id.IntegerValue).Count() == 0)
+                                        failureWallIds.Add(wal.Id);
+                                }
+                            }
+                            if (failureWallIds.Count!=0)
+                            {
+                                failureElemIds += "墙" + "\r\n";
+                                failureWallIds.ConvertAll(m => m.IntegerValue.ToString() + "\r\n");
                             }
                         }
                     }
                     //楼梯模板
-                    foreach (Element stair in stairsList)
+                    if (checkOpt.Contains("楼梯模板"))
                     {
-
-                        if (!checkOpt.Contains("楼梯模板")) break;
-                        Solid stairSolid = bc.AllUnionSolid(stair);
-                        foreach (Face sface in stairSolid.Faces)
-                        {
-                            XYZ faceNormal = sface.ComputeNormal(new UV(0, 0));
-                            if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ))
-                                continue;
-                            //try
-                            //{
-                                bc.SurfaceLayerGernerate(doc, sface, dst,stair.Id);
-                            //}
-                            //catch { failureElemIds += stair.Id.IntegerValue + "\r\n"; }
-                        }
+                     string stairsTxt=bc.HostElemTpGenerate(stairsList, dst, new List<XYZ>() { XYZ.BasisZ });
+                        if (stairsTxt != null) failureElemIds += "楼梯" + "\r\n"+stairsTxt;
                     }
                     //基础模板
-                    foreach (Element basis in basisList)
+                    if (checkOpt.Contains("基础模板"))
                     {
-                        if (!checkOpt.Contains("基础模板")) break;
-                        Solid solid = bc.AllSolid_Of_Element(basis).OrderBy(m => m.Volume).Last();
-                        foreach (Face bsface in solid.Faces)
-                        {
-                            XYZ faceNormal = bsface.ComputeNormal(new UV(0, 0));
-                            if (faceNormal.IsAlmostEqualTo(XYZ.BasisZ)||faceNormal.IsAlmostEqualTo(-XYZ.BasisZ))
-                                continue;
-                            //try
-                            //{
-                                bc.SurfaceLayerGernerate(doc, bsface, dst, basis.Id);
-                            //}
-                            //catch { failureElemIds += basis.Id.IntegerValue + "\r\n"; }
-                        }
+                     string basisTxt=bc.HostElemTpGenerate(basisList, dst, new List<XYZ>() { XYZ.BasisZ, -XYZ.BasisZ });
+                        if (basisTxt != null) failureElemIds += "基础" + "\r\n"+basisTxt;
                     }
-
                     trans.Commit();
                     if (failureElemIds != null)
+                    {
+                        SWF.SaveFileDialog sfd = new SWF.SaveFileDialog();
+                        sfd.Filter = "文本文档|*.txt"; //删选、设定文件显示类型
+                        sfd.DefaultExt = ".txt";
+                        sfd.FileName = "模板生成错误构件ID";
+                        sfd.AddExtension = true;
+                        sfd.ShowDialog();
+                        string path = sfd.FileName;
                         File.WriteAllText(@"C: \Users\BXS\Desktop\FailureText.txt", failureElemIds);
+                    }
+                        
                 }
                 transGroup.Assimilate();
             }

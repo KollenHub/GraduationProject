@@ -431,6 +431,19 @@ namespace TemplateCount
                     solidList.Add(bc.AllUnionSolid(hostElem));
                 else if (hostElem.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFoundation))
                     solidList.Add(bc.AllSolid_Of_Element(hostElem).OrderBy(m => m.Volume).Last());
+                else if (hostElem.Category.Id == new ElementId(BuiltInCategory.OST_StructuralFraming))
+                {
+                    try
+                    {
+                        LocationCurve Curve = (hostElem as FamilyInstance).Location as LocationCurve;
+                        solidList = bc.AllSolid_Of_Element(hostElem);
+                    }
+                    catch 
+                    {
+                        failureTxt += hostElem.Id.IntegerValue.ToString() + "\r\n";
+                        continue;
+                    }
+                }
                 else
                     solidList = bc.AllSolid_Of_Element(hostElem);
                 foreach (Solid sd in solidList)
