@@ -76,9 +76,12 @@ namespace TemplateCount
                         worksheet.Cells[1, fieldsList.IndexOf(str) + 1].Value = proNameList.ElementAt(fieldsList.IndexOf(str));
                         worksheet.Column(fieldsList.IndexOf(str) + 1).Width = columnSizeList.ElementAt(fieldsList.IndexOf(str));
                     }
-                    //加一列合计
-                    worksheet.Cells[1, fieldsList.Count + 1].Value = "合计(m2)";
-                    worksheet.Column(fieldsList.Count + 1).Width = 15;
+                    //如果是模板加一列合计
+                    if (tpa.TypeName.Contains("模板"))
+                    {
+                        worksheet.Cells[1, fieldsList.Count + 1].Value = "合计(m2)";
+                        worksheet.Column(fieldsList.Count + 1).Width = 15;
+                    }
                     //排列某个工作表
                     foreach (List<ProjectAmount> tpList in tpaListList)
                     {
@@ -111,6 +114,7 @@ namespace TemplateCount
                                 componetTotal += tp.ConcretVolumes;
                             row++;
                         }
+                        if(tpa.TypeName.Contains("模板"))
                         worksheet.Cells[rowlast, fieldsList.Count + 1].Value = componetTotal;
                         allAmount += componetTotal;
                         //TODO：如果只有一块，不知合并是否会报错
@@ -126,13 +130,12 @@ namespace TemplateCount
                                 {
                                     worksheet.Cells[rowlast, num, row - 1, num].Merge = true;
                                 }
+                                worksheet.Cells[rowlast, fieldsList.Count + 1, row - 1, fieldsList.Count + 1].Merge = true;
                             }
-
                             else//混凝土不知是否有需要
                             {
 
                             }
-                            worksheet.Cells[rowlast, fieldsList.Count + 1, row-1, fieldsList.Count + 1].Merge = true;
                         }
 
                     }
@@ -201,11 +204,13 @@ namespace TemplateCount
                     {
                         worksheet.Column(k + 1).Width = columnSizeList[k];
                     }
-
+                    int column = 1;
+                    if (tpa.TypeName.Contains("模板"))
+                        column = 2;
                     for (int p = 1; p < row+1; p++)
                     {
                         worksheet.Row(p).Height = 20;
-                        for (int l = 1; l < columnSizeList.Count + 2; l++)
+                        for (int l = 1; l < columnSizeList.Count +column; l++)
                         {
                             worksheet.Cells[p, l].Style.Border.BorderAround(ExcelBorderStyle.Thin, Color.FromArgb(191, 191, 191));//设置单元格所有边框
                         }

@@ -12,101 +12,71 @@ namespace TemplateCount
 {
     public static class ProjectCountCommand
     {
-
-
-        public static List<List<Element>> TemplateQuantityCount(Document doc, bc.TypeName tyName, List<Level> levList)
+        /// <summary>
+        /// 模板计算工程量方法
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <param name="tyName"></param>
+        /// <param name="levList"></param>
+        /// <returns></returns>
+        public static List<List<Element>> BuiltingQuantityCount(Document doc, bc.TypeName tyName, List<Level> levList)
         {
             List<Element> hostElemList = new List<Element>();
+            string ty = Enum.GetName(typeof(bc.TypeName), tyName);
+            //作为判断的中介
+            string p = null;
+            if (ty.Contains("模板"))
+               p = ty.Split(new char[] { '模' })[0];
+            else
+               p = ty.Split(new char[] { '砼' })[0];
             foreach (Level lev in levList)
             {
-                switch (tyName)
+                switch (p)
                 {
-                    case bc.TypeName.板模板:
+                    case "板":
                         hostElemList .AddRange(bc.FilterElementList<Floor>(doc, BuiltInCategory.OST_Floors,lev));
                         break;
-                    case bc.TypeName.梁模板:
+                    case "梁":
                         hostElemList.AddRange(bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralFraming,lev));
                         break;
-                    case bc.TypeName.柱模板:
+                    case "柱":
                         hostElemList .AddRange( bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralColumns,lev));
                         break;
-                    case bc.TypeName.墙模板:
+                    case "墙":
                         hostElemList.AddRange(bc.FilterElementList<Wall>(doc, BuiltInCategory.OST_Walls, lev));
                         break;
-                    case bc.TypeName.楼梯模板:
+                    case "楼梯":
                         hostElemList.AddRange(bc.FilterElementList<Stairs>(doc, BuiltInCategory.OST_Stairs, lev));
                         break;
-                    case bc.TypeName.基础模板:
+                    case "基础":
                         hostElemList.AddRange(bc.FilterElementList<FamilyInstance>(doc, BuiltInCategory.OST_StructuralFoundation,lev));
                         break;
                     default:
                         break;
                 }
             }
-            List<List<Element>> TpListList = hostElemList.ConvertAll(m => new List<Element>() { m });
+            
             //模板集合
-            List<Element> dsList = bc.FilterElementList<DirectShape>(doc);
-            foreach (DirectShape ds in dsList)
+            if (ty.Contains("模板"))
             {
-                int dsId = ds.LookupParameter("HostElemID").AsInteger();
-                //MessageBox.Show("sdjhashdh");
-                foreach (List<Element> tpList in TpListList)
+                List<List<Element>> TpListList = hostElemList.ConvertAll(m => new List<Element>() { m });
+                List<Element> dsList = bc.FilterElementList<DirectShape>(doc);
+                foreach (DirectShape ds in dsList)
                 {
-                    if (tpList[0].Id.IntegerValue == dsId)
+                    int dsId = ds.LookupParameter("HostElemID").AsInteger();
+                    //MessageBox.Show("sdjhashdh");
+                    foreach (List<Element> tpList in TpListList)
                     {
-                        tpList.Add(ds);
-                        break;
+                        if (tpList[0].Id.IntegerValue == dsId)
+                        {
+                            tpList.Add(ds);
+                            break;
+                        }
                     }
                 }
-
+                return TpListList;
             }
-            return TpListList;
+            return new List<List<Element>>() { hostElemList };
         }
-
-
-
-        /// <summary>
-        /// 梁柱混凝土工程量计算
-        /// </summary>
-        /// <param name="doc">项目文档</param>
-        /// <param name="InstanceList">全部梁的集合</param>
-        /// <param name="joinBeamList">被剪切梁的集合</param>
-        /// <param name="tpAmountList">导出的工程量集合</param>
-        public static void ConcretQuantityCount(Document doc, List<FamilyInstance> InstanceList, bc.TypeName tpname, out List<ProjectAmount> tpAmountList)
-        {
-            tpAmountList = new List<ProjectAmount>();
-            Level lev = null;
-            if (tpname == bc.TypeName.梁砼工程量)
-            {
-                lev = doc.GetElement(InstanceList[0].Host.Id) as Level;
-            }
-            else if (tpname == bc.TypeName.柱砼工程量)
-            {
-                lev = doc.GetElement(InstanceList[0].LevelId) as Level;
-            }
-            foreach (FamilyInstance inst in InstanceList)
-            {
-                double instanceVolume = 0;
-                List<Solid> instanceSolidList = bc.AllSolid_Of_Element(inst);
-                instanceSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
-                ProjectAmount instanceConcret = new ProjectAmount(inst, lev, tpname, instanceVolume);
-                tpAmountList.Add(instanceConcret);
-            }
-        }
-        public static void ConcretQuantityCount(Document doc, List<Floor> flList, bc.TypeName tpname, out List<ProjectAmount> tpAmountList)
-        {
-            tpAmountList = new List<ProjectAmount>();
-            Level lev = doc.GetElement(flList[0].LevelId) as Level;
-            foreach (Floor fl in flList)
-            {
-                double instanceVolume = 0;
-                List<Solid> flSolidList = bc.AllSolid_Of_Element(fl);
-                flSolidList.ConvertAll(m => instanceVolume += bc.EVToCV(m.Volume));
-                ProjectAmount flConcret = new ProjectAmount(fl, lev, bc.TypeName.板砼工程量, instanceVolume);
-                tpAmountList.Add(flConcret);
-            }
-        }
-
-
     }
 }

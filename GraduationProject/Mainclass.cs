@@ -29,13 +29,6 @@ namespace TemplateCount
                 //项目标高集合
                 List<int> levIndexList = win.levList.Where((m => m > 0 && m <= bc.GetLevList(doc).Count || m == int.MaxValue)).ToList();
                 List<Level> lev_List = levIndexList.Contains(int.MaxValue) ? bc.GetLevList(doc) : levIndexList.ConvertAll(m => bc.GetLevList(doc).ElementAt(m - 1));
-                //梁混凝土
-                List<List<ProjectAmount>> beamConcret_List = new List<List<ProjectAmount>>();
-                //柱混凝土
-                List<List<ProjectAmount>> colConcret_List = new List<List<ProjectAmount>>();
-                //板混凝土
-                List<List<ProjectAmount>> flConcret_List = new List<List<ProjectAmount>>();
-                //获取所有构件分别对应的模板集合
                 //try
                 //{
                 List<string> strList = win.chbStrList;
@@ -45,43 +38,64 @@ namespace TemplateCount
                     {
                         //TODO:没有生成模板的构件标记
                         case "梁模板":
-                            List<List<Element>> beamTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.梁模板, lev_List);
+                            List<List<Element>> beamTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.梁模板, lev_List);
                             List<List<ProjectAmount>> beamTpa_List = bc.ProjectAmoutList(beamTpListList, bc.TypeName.梁模板);
                             tpAListList_List.Add(beamTpa_List);
                             break;
                         case "柱模板":
-                            List<List<Element>> colTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.柱模板, lev_List);
+                            List<List<Element>> colTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.柱模板, lev_List);
                             List<List<ProjectAmount>> colTpa_List = bc.ProjectAmoutList(colTpListList, bc.TypeName.柱模板);
                             tpAListList_List.Add(colTpa_List);
                             break;
                         case "板模板":
-                            List<List<Element>> flTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.板模板, lev_List);
+                            List<List<Element>> flTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.板模板, lev_List);
                             List<List<ProjectAmount>> flTpa_List = bc.ProjectAmoutList(flTpListList, bc.TypeName.板模板);
                             tpAListList_List.Add(flTpa_List);
                             break;
                         case "墙模板":
-                            List<List<Element>> walTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.墙模板, lev_List);
+                            List<List<Element>> walTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.墙模板, lev_List);
                             List<List<ProjectAmount>> walTpa_List = bc.ProjectAmoutList(walTpListList,bc.TypeName.墙模板);
                             tpAListList_List.Add(walTpa_List);
                             break;
                         case "楼梯模板":
-                            List<List<Element>> stairTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.楼梯模板, lev_List);
+                            List<List<Element>> stairTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.楼梯模板, lev_List);
                             List<List<ProjectAmount>> stairTpa_List = bc.ProjectAmoutList(stairTpListList, bc.TypeName.楼梯模板);
                             tpAListList_List.Add(stairTpa_List);
                             break;
                         case "基础模板":
-                            List<List<Element>> basisTpListList = TpCount.TemplateQuantityCount(doc, bc.TypeName.基础模板, lev_List);
+                            List<List<Element>> basisTpListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.基础模板, lev_List);
                             List<List<ProjectAmount>> basisTpa_List = bc.ProjectAmoutList(basisTpListList, bc.TypeName.基础模板);
                             tpAListList_List.Add(basisTpa_List);
                             break;
                         case "梁混凝土量":
+                            List<List<Element>> beamListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.梁砼工程量, lev_List);
+                            List<List<ProjectAmount>> beamConcret_List = bc.ProjectAmoutList(beamListList, bc.TypeName.梁砼工程量);
                             tpAListList_List.Add(beamConcret_List);
                             break;
                         case "柱混凝土量":
+                            List<List<Element>> colListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.柱砼工程量, lev_List);
+                            List<List<ProjectAmount>> colConcret_List = bc.ProjectAmoutList(colListList, bc.TypeName.柱砼工程量);
                             tpAListList_List.Add(colConcret_List);
                             break;
                         case "板混凝土量":
+                            List<List<Element>> fllist = TpCount.BuiltingQuantityCount(doc, bc.TypeName.板砼工程量, lev_List);
+                            List<List<ProjectAmount>> flConcret_List = bc.ProjectAmoutList(fllist, bc.TypeName.板砼工程量);
                             tpAListList_List.Add(flConcret_List);
+                            break;
+                        case "墙混凝土量":
+                            List<List<Element>> walListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.墙砼工程量, lev_List);
+                            List<List<ProjectAmount>> walConcret_List = bc.ProjectAmoutList(walListList, bc.TypeName.墙砼工程量);
+                            tpAListList_List.Add(walConcret_List);
+                            break;
+                        case "楼梯混凝土量":
+                            List<List<Element>> stairListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.楼梯砼工程量, lev_List);
+                            List<List<ProjectAmount>> stairConcret_List = bc.ProjectAmoutList(stairListList, bc.TypeName.楼梯砼工程量);
+                            tpAListList_List.Add(stairConcret_List);
+                            break;
+                        case "基础混凝土量":
+                            List<List<Element>> basisListList = TpCount.BuiltingQuantityCount(doc, bc.TypeName.基础砼工程量, lev_List);
+                            List<List<ProjectAmount>> basisConcret_List = bc.ProjectAmoutList(basisListList, bc.TypeName.基础砼工程量);
+                            tpAListList_List.Add(basisConcret_List);
                             break;
 
                         default:

@@ -37,18 +37,18 @@ namespace TemplateCount
 
         private void Win_Loaded(object sender, RoutedEventArgs e)
         {
-            //chbB.IsChecked = true;
-            //chbC.IsChecked = true;
-            //chbF.IsChecked = true;
-            //chbBc.IsChecked = true;
-            //chbFc.IsChecked = true;
-            //chbCc.IsChecked = true;
-            //chbS.IsChecked = true;
-            //chbFd.IsChecked = true;
+            chbB.IsChecked = true;
+            chbC.IsChecked = true;
+            chbF.IsChecked = true;
+            chbBc.IsChecked = true;
+            chbFc.IsChecked = true;
+            chbCc.IsChecked = true;
+            chbS.IsChecked = true;
+            chbFd.IsChecked = true;
             chbW.IsChecked = true;
-            //chbWc.IsChecked = true;
-            //chbFDc.IsChecked = true;
-            //chbSc.IsChecked = true;
+            chbWc.IsChecked = true;
+            chbFDc.IsChecked = true;
+            chbSc.IsChecked = true;
             List<Level> levList = bc.GetLevList(uiDoc.Document);
             fstCmb.ItemsSource = levList.ConvertAll(m => m.Name);
             fstCmb.SelectedIndex = 0;
